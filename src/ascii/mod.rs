@@ -1,32 +1,16 @@
 use anyhow::Result;
-use artem::{config::ConfigBuilder, convert};
 use reqwest;
-use std::num::NonZeroU32;
 use tokio::time::{timeout, Duration};
-use image::{imageops::FilterType, DynamicImage};
-use terminal_size::{Width, Height, terminal_size};
 use colored::*;
+use std::process::Command;
+use std::fs;
+use std::path::Path;
+use tempfile::NamedTempFile;
 
 pub struct AsciiConverter {
     client: reqwest::Client,
 }
 
-#[derive(Debug, Clone)]
-pub enum QualityPreset {
-    Low,    // Small terminals, simple characters
-    Medium, // Standard quality
-    High,   // Large terminals, detailed characters  
-    Ultra,  // Maximum detail and smoothness
-}
-
-#[derive(Debug, Clone)]
-pub struct PosterConfig {
-    pub width: u32,
-    pub height: u32,
-    pub quality: QualityPreset,
-    pub enhance_contrast: bool,
-    pub normalize_brightness: bool,
-}
 
 impl AsciiConverter {
     pub fn new() -> Self {
@@ -37,10 +21,38 @@ impl AsciiConverter {
             
         Self { client }
     }
+    
+    pub fn detect_terminal_colors() -> bool {
+        // Check TERM environment variable
+        if let Ok(term) = std::env::var("TERM") {
+            if term.contains("256color") || term.contains("color") {
+                return true;
+            }
+        }
+        
+        // Check tput colors command
+        if let Ok(output) = Command::new("tput").arg("colors").output() {
+            if output.status.success() {
+                if let Ok(colors_str) = String::from_utf8(output.stdout) {
+                    if let Ok(colors) = colors_str.trim().parse::<i32>() {
+                        return colors >= 8;
+                    }
+                }
+            }
+        }
+        
+        // Check for common color-supporting terminals
+        if let Ok(term) = std::env::var("TERM") {
+            let color_terms = ["xterm", "screen", "tmux", "rxvt", "gnome", "konsole", "iterm"];
+            return color_terms.iter().any(|&color_term| term.to_lowercase().contains(color_term));
+        }
+        
+        false
+    }
 
     pub async fn convert_poster_to_ascii(&self, poster_url: &str, width: u32) -> Result<String> {
         let image_data = self.fetch_image(poster_url).await?;
-        let ascii_art = self.image_to_ascii(&image_data, width)?;
+        let ascii_art = self.image_to_ascii_python(&image_data, width)?;
         Ok(ascii_art)
     }
 
@@ -55,68 +67,55 @@ impl AsciiConverter {
         Ok(bytes.to_vec())
     }
 
-    fn image_to_ascii(&self, image_data: &[u8], width: u32) -> Result<String> {
-        let img = image::load_from_memory(image_data)
-            .map_err(|e| anyhow::anyhow!("Failed to load image: {}", e))?;
+    fn image_to_ascii_python(&self, image_data: &[u8], width: u32) -> Result<String> {
+        // Create temporary file for input image
+        let mut temp_input = NamedTempFile::new()
+            .map_err(|e| anyhow::anyhow!("Failed to create temp input file: {}", e))?;
         
-        // Determine quality based on terminal size and width
-        let term_width = if let Some((Width(w), Height(_))) = terminal_size() {
-            w as u32
-        } else {
-            80
-        };
+        std::io::Write::write_all(&mut temp_input, image_data)
+            .map_err(|e| anyhow::anyhow!("Failed to write image data: {}", e))?;
         
-        let quality = match (term_width, width) {
-            (w, _) if w < 60 => QualityPreset::Low,
-            (w, size) if w < 100 || size < 25 => QualityPreset::Medium,
-            (w, size) if w < 140 || size < 35 => QualityPreset::High,
-            _ => QualityPreset::Ultra,
-        };
+        // Create temporary file for output ASCII
+        let temp_output = NamedTempFile::new()
+            .map_err(|e| anyhow::anyhow!("Failed to create temp output file: {}", e))?;
         
-        let config = PosterConfig {
-            width,
-            height: (width as f32 * 1.5) as u32, // Movie poster aspect ratio
-            quality,
-            enhance_contrast: true,
-            normalize_brightness: true,
-        };
+        let input_path = temp_input.path().to_string_lossy();
+        let output_path = temp_output.path().to_string_lossy();
         
-        self.convert_with_config(img, &config)
-    }
-    
-    fn convert_with_config(&self, mut img: DynamicImage, config: &PosterConfig) -> Result<String> {
-        // Preprocess image for better ASCII conversion
-        if config.enhance_contrast {
-            img = img.adjust_contrast(15.0);
+        // Get the Python script path relative to the binary
+        let python_script_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/python");
+        let script_path = python_script_dir.join("ascii_converter.py");
+        
+        // Check if terminal supports colors
+        let supports_colors = Self::detect_terminal_colors();
+        
+        // Build Python command
+        let mut cmd = Command::new("python3");
+        cmd.arg(&script_path)
+            .arg("--input").arg(&*input_path)
+            .arg("--output").arg(&*output_path)
+            .arg("--num_cols").arg(width.to_string())
+            .arg("--background").arg("black")
+            .arg("--mode").arg("standard");
+        
+        if supports_colors {
+            cmd.arg("--color_output");
         }
         
-        if config.normalize_brightness {
-            img = img.brighten(10);
+        // Execute Python script
+        let output = cmd.output()
+            .map_err(|e| anyhow::anyhow!("Failed to execute Python script: {}", e))?;
+        
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow::anyhow!("Python script failed: {}", stderr));
         }
         
-        // Resize with high-quality filtering
-        let img = img.resize_exact(config.width, config.height, FilterType::Lanczos3);
+        // Read the generated ASCII art
+        let ascii_content = fs::read_to_string(&*output_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read ASCII output: {}", e))?;
         
-        let target_size = NonZeroU32::new(config.width)
-            .unwrap_or(NonZeroU32::new(30).unwrap());
-            
-        let characters = match config.quality {
-            QualityPreset::Low => " .-+*#".to_string(),
-            QualityPreset::Medium => " .:-=+*#%@".to_string(),
-            QualityPreset::High => " ░▒▓█".to_string(),
-            QualityPreset::Ultra => " ·∘∙•⦁⦿●█".to_string(),
-        };
-        
-        let artem_config = ConfigBuilder::new()
-            .target_size(target_size)
-            .characters(characters)
-            .color(false)
-            .invert(false)
-            .hysteresis(true) // Better edge detection
-            .build();
-
-        let ascii_art = convert(img, &artem_config);
-        Ok(ascii_art)
+        Ok(ascii_content)
     }
 
     pub fn create_letterboxd_logo() -> String {
@@ -207,15 +206,22 @@ impl AsciiConverter {
     }
     
     pub fn get_dynamic_poster_size(terminal_width: u32) -> (u32, u32) {
+        // Dramatically increased sizes for much more detailed ASCII art
         let width = match terminal_width {
-            0..=60 => 20,
-            61..=100 => 25, 
-            101..=140 => 30,
-            141..=180 => 35,
-            _ => 40,
+            0..=80 => 40,   // Minimum 40px even for small terminals
+            81..=120 => 60, // Standard quality
+            121..=160 => 70, // High quality
+            161..=200 => 80, // Ultra quality  
+            _ => 90,        // Maximum detail for very large terminals
         };
         
         let height = (width as f32 * 1.5) as u32; // Movie poster aspect ratio
+        (width, height)
+    }
+    
+    pub fn get_optimal_poster_size(width: u32) -> (u32, u32) {
+        // Use provided width with proper movie poster aspect ratio (1.5x height)
+        let height = (width as f32 * 1.5) as u32;
         (width, height)
     }
 }

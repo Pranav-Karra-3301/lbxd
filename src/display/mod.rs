@@ -92,14 +92,8 @@ impl DisplayEngine {
             entry.movie.title.clone()
         };
         
-        // Get dynamic poster size
-        let term_width = if let Some((Width(w), Height(_))) = terminal_size() {
-            w as u32
-        } else {
-            80
-        };
-        
-        let (poster_width, _) = AsciiConverter::get_dynamic_poster_size(term_width);
+        // Use optimal poster size for maximum detail (default 60 width for user activity)
+        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(60);
 
         let ascii_art = if let Some(poster_url) = &entry.movie.poster_url {
             // Show loading animation for individual poster
@@ -127,7 +121,7 @@ impl DisplayEngine {
         println!();
 
         for (i, line) in lines.iter().enumerate() {
-            print!("{:<32}", line.dimmed());
+            print!("{:<width$}", line.dimmed(), width = poster_width as usize + 2);
             
             if i == 0 {
                 println!("{}", title_with_year.white().bold());
@@ -258,8 +252,8 @@ impl DisplayEngine {
             80 // fallback width
         };
 
-        // Get dynamic poster size for this terminal
-        let (poster_width, _) = AsciiConverter::get_dynamic_poster_size(term_width as u32);
+        // Use optimal poster size for maximum detail (default 60 width for grid display)
+        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(60);
         
         // Calculate spacing: poster + padding + margin
         let column_width = poster_width as usize + 4; // 4 chars for spacing
@@ -279,14 +273,8 @@ impl DisplayEngine {
     }
 
     async fn print_poster_row(&self, entries: &[&UserEntry]) {
-        // Get dynamic poster size based on terminal width
-        let term_width = if let Some((Width(w), Height(_))) = terminal_size() {
-            w as u32
-        } else {
-            80
-        };
-        
-        let (poster_width, _poster_height) = AsciiConverter::get_dynamic_poster_size(term_width);
+        // Use optimal poster size for maximum detail (default 60 width for poster row)
+        let (poster_width, _poster_height) = AsciiConverter::get_optimal_poster_size(60);
         
         // Show loading animation for poster fetching
         if entries.len() > 1 {
@@ -397,64 +385,49 @@ impl DisplayEngine {
         println!();
     }
 
-    pub async fn show_tmdb_movie(&self, movie: &TMDBMovie) {
+    pub async fn show_tmdb_movie(&self, movie: &TMDBMovie, width: u32) {
         self.print_minimal_header(&format!("Movie: {}", movie.title));
         
+        let poster_width = width;
         let ascii_art = if let Some(poster_url) = movie.get_full_poster_url() {
             self.print_loading_animation("Fetching poster...", 500).await;
-            match self.ascii_converter.convert_poster_to_ascii(&poster_url, 30).await {
+            match self.ascii_converter.convert_poster_to_ascii(&poster_url, poster_width).await {
                 Ok(art) => art,
-                Err(_) => AsciiConverter::get_colored_fallback_poster_ascii(30)
+                Err(_) => AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
             }
         } else {
-            AsciiConverter::get_colored_fallback_poster_ascii(30)
+            AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
         };
 
-        let lines: Vec<&str> = ascii_art.lines().collect();
-        let max_lines = lines.len();
-
+        // Print ASCII art as a complete block without mixing with metadata
         println!("{}", AsciiConverter::create_gradient_border(80, "─"));
         println!();
-
-        for (i, line) in lines.iter().enumerate() {
-            print!("{:<32}", line.dimmed());
-            
-            if i == 0 {
-                let title_with_year = if let Some(year) = movie.get_year() {
-                    format!("{} ({})", movie.title, year)
-                } else {
-                    movie.title.clone()
-                };
-                println!("{}", title_with_year.white().bold());
-            } else if i == 2 {
-                if movie.vote_average > 0.0 {
-                    println!("⭐ {:.1}/10 (TMDB)", movie.vote_average.to_string().yellow().bold());
-                } else {
-                    println!();
-                }
-            } else if i == 4 {
-                if let Some(release_date) = &movie.release_date {
-                    println!("📅 {}", release_date.dimmed());
-                } else {
-                    println!();
-                }
-            } else if i >= 6 && i < max_lines - 2 {
-                if let Some(overview) = &movie.overview {
-                    if !overview.is_empty() && i == 6 {
-                        let truncated = if overview.len() > 80 {
-                            format!("{}...", &overview[..80])
-                        } else {
-                            overview.clone()
-                        };
-                        println!("{}", truncated.white());
-                    } else {
-                        println!();
-                    }
-                } else {
-                    println!();
-                }
-            } else {
-                println!();
+        
+        // Display the ASCII art cleanly
+        println!("{}", ascii_art);
+        
+        println!();
+        println!("{}", AsciiConverter::create_gradient_border(80, "─"));
+        
+        // Display movie metadata separately below the ASCII art
+        let title_with_year = if let Some(year) = movie.get_year() {
+            format!("{} ({})", movie.title, year)
+        } else {
+            movie.title.clone()
+        };
+        println!("\n{}", title_with_year.white().bold());
+        
+        if movie.vote_average > 0.0 {
+            println!("⭐ {:.1}/10 (TMDB)", movie.vote_average.to_string().yellow().bold());
+        }
+        
+        if let Some(release_date) = &movie.release_date {
+            println!("📅 {}", release_date.dimmed());
+        }
+        
+        if let Some(overview) = &movie.overview {
+            if !overview.is_empty() {
+                println!("\n{}", overview.white());
             }
         }
         

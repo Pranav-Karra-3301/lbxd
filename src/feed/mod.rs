@@ -131,24 +131,51 @@ impl FeedParser {
             title.to_string()
         };
         
+        eprintln!("🔍 Searching TMDB for: '{}'", search_query);
+        
         // Search TMDB for the movie
         match self.tmdb_client.search_movie(&search_query).await {
             Ok(Some(movie)) => {
-                // Get high-quality poster URL
-                movie.get_high_quality_poster_url()
+                let poster_url = movie.get_high_quality_poster_url();
+                if let Some(ref url) = poster_url {
+                    eprintln!("✅ Found TMDB poster for '{}': {}", title, url);
+                } else {
+                    eprintln!("⚠ TMDB movie found for '{}' but no poster_path available", title);
+                }
+                poster_url
             },
             Ok(None) => {
+                eprintln!("❌ No TMDB results for '{}'", search_query);
                 // Try searching without year if first search failed
                 if year.is_some() {
+                    eprintln!("🔍 Retrying TMDB search without year: '{}'", title);
                     match self.tmdb_client.search_movie(title).await {
-                        Ok(Some(movie)) => movie.get_high_quality_poster_url(),
-                        _ => None,
+                        Ok(Some(movie)) => {
+                            let poster_url = movie.get_high_quality_poster_url();
+                            if let Some(ref url) = poster_url {
+                                eprintln!("✅ Found TMDB poster for '{}' (no year): {}", title, url);
+                            } else {
+                                eprintln!("⚠ TMDB movie found for '{}' (no year) but no poster_path", title);
+                            }
+                            poster_url
+                        },
+                        Ok(None) => {
+                            eprintln!("❌ No TMDB results for '{}' (no year)", title);
+                            None
+                        },
+                        Err(e) => {
+                            eprintln!("💥 TMDB API error for '{}' (no year): {}", title, e);
+                            None
+                        }
                     }
                 } else {
                     None
                 }
             },
-            Err(_) => None,
+            Err(e) => {
+                eprintln!("💥 TMDB API error for '{}': {}", search_query, e);
+                None
+            }
         }
     }
 }

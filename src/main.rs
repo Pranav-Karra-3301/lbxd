@@ -159,7 +159,7 @@ async fn main() {
             display.print_error("Summary feature coming soon!");
         },
 
-        Commands::Movie { title } => {
+        Commands::Movie { title, width } => {
             if !config_manager.is_first_run() {
                 display.print_minimal_logo();
             }
@@ -169,7 +169,7 @@ async fn main() {
             
             match tmdb_client.search_movie(&title).await {
                 Ok(Some(movie)) => {
-                    display.show_tmdb_movie(&movie).await;
+                    display.show_tmdb_movie(&movie, width).await;
                 },
                 Ok(None) => {
                     display.print_error(&format!("No movies found for '{}'", title));

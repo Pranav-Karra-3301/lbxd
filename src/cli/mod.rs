@@ -59,6 +59,8 @@ pub enum Commands {
     Movie {
         #[arg(help = "Movie title to search for")]
         title: String,
+        #[arg(short, long, help = "ASCII art width in characters (30-100)", value_parser = clap::value_parser!(u32).range(30..=100), default_value = "60")]
+        width: u32,
     },
     #[command(about = "⚙ Manage user configuration settings")]
     Config {
