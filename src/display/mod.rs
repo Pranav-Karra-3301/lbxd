@@ -2,6 +2,7 @@ use crate::models::{UserEntry, UserProfile, ViewingSummary};
 use crate::ascii::AsciiConverter;
 use crate::tmdb::{TMDBMovie, TMDBClient};
 use crate::viu::ViuViewer;
+use crate::batch_loader::BatchLoader;
 use colored::*;
 use std::time::Duration;
 use tokio::time::interval;
@@ -324,17 +325,8 @@ impl DisplayEngine {
         // Clean the title for better TMDB search results  
         let cleaned_title = self.clean_title_for_search(&entry.movie.title);
         
-        // Create search query with year if available for better accuracy
-        let search_query = if let Some(year) = entry.movie.year {
-            format!("{} {}", cleaned_title, year)
-        } else {
-            cleaned_title.clone()
-        };
-        
-        eprintln!("🔍 Searching TMDB for: '{}' (cleaned from: '{}')", search_query, entry.movie.title);
-        
-        // Search TMDB for the movie (exactly like movie command)
-        match self.tmdb_client.search_movie(&search_query).await {
+        // Search TMDB for the movie using year as URL parameter
+        match self.tmdb_client.search_movie_with_year(&cleaned_title, entry.movie.year).await {
             Ok(Some(movie)) => {
                 // Use the unified display function with user data
                 self.display_movie_with_poster(
@@ -354,8 +346,7 @@ impl DisplayEngine {
             Ok(None) => {
                 // Try searching without year if first search failed
                 if entry.movie.year.is_some() {
-                    eprintln!("🔍 Retrying TMDB search without year: '{}'", cleaned_title);
-                    match self.tmdb_client.search_movie(&cleaned_title).await {
+                    match self.tmdb_client.search_movie_with_year(&cleaned_title, None).await {
                         Ok(Some(movie)) => {
                             self.display_movie_with_poster(
                                 &entry.movie.title,
@@ -371,25 +362,7 @@ impl DisplayEngine {
                                 width
                             ).await;
                         },
-                        Ok(None) => {
-                            eprintln!("❌ No TMDB results for '{}' (no year)", cleaned_title);
-                            // Show without poster
-                            self.display_movie_with_poster(
-                                &entry.movie.title,
-                                entry.movie.year,
-                                None,
-                                None,
-                                None,
-                                None,
-                                entry.rating,
-                                entry.review.as_ref(),
-                                entry.watched_date,
-                                ascii_mode,
-                                width
-                            ).await;
-                        },
-                        Err(e) => {
-                            eprintln!("💥 TMDB API error for '{}' (no year): {}", cleaned_title, e);
+                        Ok(None) | Err(_) => {
                             // Show without poster
                             self.display_movie_with_poster(
                                 &entry.movie.title,
@@ -407,7 +380,6 @@ impl DisplayEngine {
                         }
                     }
                 } else {
-                    eprintln!("❌ No TMDB results for '{}'", search_query);
                     // Show without poster
                     self.display_movie_with_poster(
                         &entry.movie.title,
@@ -424,8 +396,7 @@ impl DisplayEngine {
                     ).await;
                 }
             },
-            Err(e) => {
-                eprintln!("💥 TMDB API error for '{}': {}", search_query, e);
+            Err(_) => {
                 // Show without poster
                 self.display_movie_with_poster(
                     &entry.movie.title,
@@ -501,74 +472,31 @@ impl DisplayEngine {
         }
     }
 
-    // ASCII grid layout (original implementation)
+    // ASCII grid layout with batch loading
     async fn print_ascii_poster_row_tmdb(&self, entries: &[&UserEntry], width: u32) {
-        // Show loading animation for poster fetching
-        if entries.len() > 1 {
-            self.print_loading_animation(&format!("Loading {} posters...", entries.len()), 300).await;
-        }
+        let batch_loader = BatchLoader::new();
         
-        // Collect all movie data with TMDB lookups first
+        // Process all entries with unified loading indicator
+        let results = batch_loader.process_entries_with_progress(entries).await;
+        
+        // Convert to the format expected by the ASCII grid renderer
         let mut movie_data = Vec::new();
-        for entry in entries {
-            // Clean the title for better TMDB search results  
-            let cleaned_title = self.clean_title_for_search(&entry.movie.title);
-            
-            // Create search query with year if available for better accuracy
-            let search_query = if let Some(year) = entry.movie.year {
-                format!("{} {}", cleaned_title, year)
-            } else {
-                cleaned_title.clone()
-            };
-            
-            eprintln!("🔍 Searching TMDB for: '{}' (cleaned from: '{}')", search_query, entry.movie.title);
-            
-            // Search TMDB for the movie (exactly like vertical mode)
-            let poster_url = match self.tmdb_client.search_movie(&search_query).await {
-                Ok(Some(movie)) => movie.get_full_poster_url(),
-                Ok(None) => {
-                    // Try searching without year if first search failed
-                    if entry.movie.year.is_some() {
-                        eprintln!("🔍 Retrying TMDB search without year: '{}'", cleaned_title);
-                        match self.tmdb_client.search_movie(&cleaned_title).await {
-                            Ok(Some(movie)) => movie.get_full_poster_url(),
-                            Ok(None) => {
-                                eprintln!("❌ No TMDB results for '{}' (no year)", cleaned_title);
-                                None
-                            },
-                            Err(e) => {
-                                eprintln!("💥 TMDB API error for '{}' (no year): {}", cleaned_title, e);
-                                None
-                            }
-                        }
-                    } else {
-                        eprintln!("❌ No TMDB results for '{}'", search_query);
-                        None
-                    }
-                },
-                Err(e) => {
-                    eprintln!("💥 TMDB API error for '{}': {}", search_query, e);
-                    None
-                }
-            };
-            
-            movie_data.push((entry, poster_url));
+        for result in &results {
+            movie_data.push((&result.entry, result.poster_url.as_ref()));
         }
         
         // Generate ASCII arts for all posters
         let mut ascii_arts = Vec::new();
-        for (entry, poster_url) in &movie_data {
+        for (_entry, poster_url) in &movie_data {
             let ascii_art = if let Some(url) = poster_url {
                 match self.ascii_converter.convert_poster_to_ascii(url, width).await {
                     Ok((art, _aspect_ratio)) => art,
-                    Err(e) => {
-                        eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
+                    Err(_) => {
                         let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
                         AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
                     }
                 }
             } else {
-                eprintln!("ℹ No poster URL found for '{},' (using fallback)", entry.movie.title);
                 let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
                 AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
             };
@@ -668,16 +596,45 @@ impl DisplayEngine {
         println!();
     }
 
-    // viu display for horizontal layout - display each poster individually
+    // viu display for horizontal layout - display each poster individually with batch loading
     async fn print_viu_poster_row_tmdb(&self, entries: &[&UserEntry], width: u32) {
-        // Show loading animation for poster fetching
-        if entries.len() > 1 {
-            self.print_loading_animation(&format!("Loading {} posters...", entries.len()), 300).await;
-        }
+        let batch_loader = BatchLoader::new();
         
-        // Display each entry individually using the unified display method (like vertical mode)
-        for entry in entries {
-            self.display_entry_with_tmdb_lookup(entry, false, width).await;
+        // Process all entries with unified loading indicator
+        let results = batch_loader.process_entries_with_progress(entries).await;
+        
+        // Display results cleanly without debug output
+        for result in results {
+            if let Some(movie) = &result.tmdb_movie {
+                self.display_movie_with_poster(
+                    &result.entry.movie.title,
+                    result.entry.movie.year,
+                    movie.get_full_poster_url(),
+                    Some(movie.vote_average),
+                    movie.release_date.as_ref(),
+                    movie.overview.as_ref(),
+                    result.entry.rating,
+                    result.entry.review.as_ref(),
+                    result.entry.watched_date,
+                    false, // Use viu
+                    width
+                ).await;
+            } else {
+                // No TMDB result - show without poster
+                self.display_movie_with_poster(
+                    &result.entry.movie.title,
+                    result.entry.movie.year,
+                    None,
+                    None,
+                    None,
+                    None,
+                    result.entry.rating,
+                    result.entry.review.as_ref(),
+                    result.entry.watched_date,
+                    false, // Use viu
+                    width
+                ).await;
+            }
             println!(); // Add spacing between entries
         }
     }

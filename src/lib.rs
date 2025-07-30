@@ -8,6 +8,7 @@ pub mod config;
 pub mod ascii;
 pub mod tmdb;
 pub mod viu;
+pub mod batch_loader;
 
 pub use cli::*;
 pub use display::*;
@@ -19,3 +20,4 @@ pub use config::*;
 pub use ascii::*;
 pub use tmdb::*;
 pub use viu::*;
+pub use batch_loader::*;

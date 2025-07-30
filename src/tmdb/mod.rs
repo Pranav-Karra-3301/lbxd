@@ -38,12 +38,20 @@ impl TMDBClient {
     }
 
     pub async fn search_movie(&self, query: &str) -> Result<Option<TMDBMovie>> {
-        let url = format!(
+        self.search_movie_with_year(query, None).await
+    }
+
+    pub async fn search_movie_with_year(&self, query: &str, year: Option<i32>) -> Result<Option<TMDBMovie>> {
+        let mut url = format!(
             "{}/search/movie?api_key={}&query={}",
             TMDB_BASE_URL,
             TMDB_API_KEY,
             urlencoding::encode(query)
         );
+
+        if let Some(year) = year {
+            url.push_str(&format!("&year={}", year));
+        }
 
         let response = self.client.get(&url).send().await?;
         
