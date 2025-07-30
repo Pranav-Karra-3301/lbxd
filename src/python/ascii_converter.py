@@ -12,6 +12,22 @@ from PIL import Image, ImageDraw, ImageOps, ImageFont
 from utils import get_data
 
 
+def make_image_square(image):
+    """
+    Convert image to 1:1 aspect ratio by stretching/squishing to fill a square canvas.
+    """
+    height, width = image.shape[:2]
+    
+    # Determine the larger dimension to create square canvas
+    max_dim = max(width, height)
+    
+    # Resize image to fill the square canvas completely
+    # This will stretch narrow images or squish tall images
+    square_image = cv2.resize(image, (max_dim, max_dim), interpolation=cv2.INTER_AREA)
+    
+    return square_image
+
+
 def get_args():
     parser = argparse.ArgumentParser("Image to ASCII")
     parser.add_argument("--input", type=str, required=True, help="Path to input image")
@@ -24,6 +40,7 @@ def get_args():
     parser.add_argument("--num_cols", type=int, default=100, help="number of character for output's width")
     parser.add_argument("--scale", type=int, default=2, help="upsize output")
     parser.add_argument("--color_output", action="store_true", help="Generate colored ASCII output")
+    parser.add_argument("--square", action="store_true", help="Convert image to 1:1 aspect ratio before processing")
     args = parser.parse_args()
     return args
 
@@ -46,10 +63,17 @@ def main(opt):
             sys.exit(1)
             
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        height, width, _ = image.shape
         
-        # Calculate original aspect ratio
-        original_aspect_ratio = width / height
+        # Convert image to square (1:1 aspect ratio) if requested
+        if opt.square:
+            image = make_image_square(image)
+            height, width, _ = image.shape
+            # Since we made the image square, aspect ratio is always 1.0
+            original_aspect_ratio = 1.0
+        else:
+            height, width, _ = image.shape
+            # Calculate original aspect ratio
+            original_aspect_ratio = width / height
         
         cell_width = width / opt.num_cols
         cell_height = scale * cell_width

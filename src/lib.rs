@@ -9,6 +9,7 @@ pub mod ascii;
 pub mod tmdb;
 pub mod viu;
 pub mod batch_loader;
+pub mod onboarding;
 
 pub use cli::*;
 pub use display::*;
@@ -21,3 +22,4 @@ pub use ascii::*;
 pub use tmdb::*;
 pub use viu::*;
 pub use batch_loader::*;
+pub use onboarding::*;

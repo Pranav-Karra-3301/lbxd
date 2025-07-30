@@ -6,8 +6,10 @@ use clap::{Parser, Subcommand};
 #[command(long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Real movie poster display with viu\n◆ Colorful ASCII art mode with Unicode blocks\n▲ TMDB integration for reliable data\n● Dynamic terminal adaptation\n◉ Smooth loading animations\n\nDeveloped by https://pranavkarra.me")]
 #[command(version)]
 pub struct Cli {
+    #[arg(long, help = "Reconfigure settings through interactive setup")]
+    pub reconfig: bool,
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand)]

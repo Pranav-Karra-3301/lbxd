@@ -6,18 +6,14 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub username: Option<String>,
-    pub first_run_completed: bool,
-    pub show_ascii_posters: bool,
-    pub ascii_width: u32,
+    pub use_pixelated_mode: bool,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             username: None,
-            first_run_completed: false,
-            show_ascii_posters: true,
-            ascii_width: 40,
+            use_pixelated_mode: true,
         }
     }
 }
@@ -57,7 +53,6 @@ impl ConfigManager {
     pub fn set_username(&self, username: String) -> Result<()> {
         let mut config = self.load_config()?;
         config.username = Some(username);
-        config.first_run_completed = true;
         self.save_config(&config)
     }
 
@@ -67,15 +62,21 @@ impl ConfigManager {
     }
 
     pub fn is_first_run(&self) -> bool {
+        // First run if config doesn't exist or username is not set
         self.load_config()
-            .map(|c| !c.first_run_completed)
+            .map(|c| c.username.is_none())
             .unwrap_or(true)
     }
 
-    pub fn mark_first_run_complete(&self) -> Result<()> {
+    pub fn set_pixelated_mode(&self, use_pixelated: bool) -> Result<()> {
         let mut config = self.load_config()?;
-        config.first_run_completed = true;
+        config.use_pixelated_mode = use_pixelated;
         self.save_config(&config)
+    }
+
+    pub fn get_pixelated_mode(&self) -> Result<bool> {
+        let config = self.load_config()?;
+        Ok(config.use_pixelated_mode)
     }
 
     pub fn change_username(&self, new_username: String) -> Result<()> {

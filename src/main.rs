@@ -7,6 +7,7 @@ use lbxd::{
     export::ExportManager,
     config::ConfigManager,
     tmdb::TMDBClient,
+    onboarding::OnboardingManager,
 };
 
 #[tokio::main]
@@ -16,7 +17,7 @@ async fn main() {
     let feed_parser = FeedParser::new();
     let export_manager = ExportManager::new();
     
-    let config_manager = match ConfigManager::new() {
+    let mut config_manager = match ConfigManager::new() {
         Ok(config) => config,
         Err(_) => {
             display.print_error("Error: Could not initialize configuration");
@@ -24,12 +25,26 @@ async fn main() {
         }
     };
 
-    if config_manager.is_first_run() {
-        display.print_ascii_art();
-        println!("\nWelcome to LBXD! This appears to be your first run.");
-        println!("You can now use 'me' as your username in future commands.");
-        if let Err(_) = config_manager.mark_first_run_complete() {
-            display.print_error("Warning: Could not save configuration");
+    // Run onboarding for first-time users or when --reconfig is used
+    if config_manager.is_first_run() || cli.reconfig {
+        let onboarding = OnboardingManager::new(config_manager);
+        if let Err(e) = onboarding.run_interactive_setup().await {
+            display.print_error(&format!("Setup failed: {}", e));
+            return;
+        }
+        
+        // Reload config manager after onboarding
+        config_manager = match ConfigManager::new() {
+            Ok(config) => config,
+            Err(_) => {
+                display.print_error("Error: Could not reload configuration after setup");
+                return;
+            }
+        };
+        
+        // If only --reconfig was used (no subcommand), exit after setup
+        if cli.reconfig && cli.command.is_none() {
+            return;
         }
     }
     
@@ -41,7 +56,19 @@ async fn main() {
         }
     };
 
-    match cli.command {
+    // Handle case where no command is provided
+    let command = match cli.command {
+        Some(cmd) => cmd,
+        None => {
+            if !cli.reconfig {
+                // No command and no --reconfig, show help
+                display.print_error("No command provided. Use --help to see available commands or --reconfig to reconfigure settings.");
+            }
+            return;
+        }
+    };
+
+    match command {
         Commands::Recent { username, limit, date, rated, reviewed, vertical, ascii, width } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
@@ -49,9 +76,7 @@ async fn main() {
             }
             let actual_username = actual_username.unwrap();
 
-            if !config_manager.is_first_run() {
-                display.print_minimal_logo();
-            }
+            display.print_minimal_logo();
             
             let profile = if let Some(ref cache) = cache_manager {
                 if let Some(cached) = cache.get_cached_profile(&actual_username) {
@@ -89,9 +114,7 @@ async fn main() {
             }
             let actual_username = actual_username.unwrap();
 
-            if !config_manager.is_first_run() {
-                display.print_minimal_logo();
-            }
+            display.print_minimal_logo();
             
             match feed_parser.fetch_user_feed(&actual_username).await {
                 Ok(profile) => {
@@ -122,11 +145,7 @@ async fn main() {
         },
         
         Commands::Compare { usernames: _ } => {
-            if !config_manager.is_first_run() {
-                display.print_minimal_logo();
-            } else {
-                display.print_ascii_art();
-            }
+            display.print_minimal_logo();
             display.print_error("Compare feature coming soon!");
         },
         
@@ -151,18 +170,12 @@ async fn main() {
         },
         
         Commands::Summary { username: _, year: _ } => {
-            if !config_manager.is_first_run() {
-                display.print_minimal_logo();
-            } else {
-                display.print_ascii_art();
-            }
+            display.print_minimal_logo();
             display.print_error("Summary feature coming soon!");
         },
 
         Commands::Movie { title, ascii, width } => {
-            if !config_manager.is_first_run() {
-                display.print_minimal_logo();
-            }
+            display.print_minimal_logo();
 
             let tmdb_client = TMDBClient::new();
             display.print_loading_animation("Searching TMDB...", 1000).await;
@@ -181,9 +194,7 @@ async fn main() {
         },
 
         Commands::Config { config_command } => {
-            if !config_manager.is_first_run() {
-                display.print_minimal_logo();
-            }
+            display.print_minimal_logo();
 
             match config_command {
                 ConfigCommands::Whoami => {
@@ -214,9 +225,7 @@ async fn main() {
                         Ok(config) => {
                             display.print_info("Current Configuration:");
                             println!("  Username: {}", config.username.unwrap_or_else(|| "Not set".to_string()));
-                            println!("  First run completed: {}", config.first_run_completed);
-                            println!("  Show ASCII posters: {}", config.show_ascii_posters);
-                            println!("  ASCII width: {}", config.ascii_width);
+                            println!("  Pixelated mode: {}", if config.use_pixelated_mode { "Enabled" } else { "Disabled" });
                         },
                         Err(e) => {
                             display.print_error(&format!("Failed to read config: {}", e));

@@ -30,7 +30,7 @@ impl ViuViewer {
     }
     
     /// Display an image using viu with optimal settings
-    pub async fn display_image_url(&self, image_url: &str, width: u32) -> Result<()> {
+    pub async fn display_image_url(&self, image_url: &str, width: u32, use_pixelated_mode: bool) -> Result<()> {
         // Download the image to a temporary file
         let image_data = self.fetch_image(image_url).await?;
         
@@ -39,32 +39,37 @@ impl ViuViewer {
         temp_file.write_all(&image_data)?;
         let temp_path = temp_file.path();
         
-        // Use viu with blocks and specified width - try -b first, then --blocks for compatibility
-        if let Ok(mut child) = Command::new("viu")
-            .arg("-b")                // Force block output for better quality
-            .arg("--width")
-            .arg(width.to_string())   // Use specified width
-            .arg(temp_path)
-            .spawn() 
-        {
-            if let Ok(status) = child.wait() {
-                if status.success() {
-                    return Ok(());
+        // Build viu command based on pixelated mode preference
+        let mut cmd = Command::new("viu");
+        cmd.arg("--width").arg(width.to_string()).arg(temp_path);
+        
+        if use_pixelated_mode {
+            // Try -b first, then --blocks for compatibility
+            if let Ok(mut child) = cmd.arg("-b").spawn() {
+                if let Ok(status) = child.wait() {
+                    if status.success() {
+                        return Ok(());
+                    }
                 }
             }
-        }
-        
-        // Fallback to --blocks if -b didn't work
-        if let Ok(mut child) = Command::new("viu")
-            .arg("--blocks")          // Alternative blocks flag for compatibility
-            .arg("--width")
-            .arg(width.to_string())   // Use specified width
-            .arg(temp_path)
-            .spawn() 
-        {
-            if let Ok(status) = child.wait() {
-                if status.success() {
-                    return Ok(());
+            
+            // Fallback to --blocks if -b didn't work
+            let mut cmd_fallback = Command::new("viu");
+            cmd_fallback.arg("--blocks").arg("--width").arg(width.to_string()).arg(temp_path);
+            if let Ok(mut child) = cmd_fallback.spawn() {
+                if let Ok(status) = child.wait() {
+                    if status.success() {
+                        return Ok(());
+                    }
+                }
+            }
+        } else {
+            // Full resolution mode - no blocks flag
+            if let Ok(mut child) = cmd.spawn() {
+                if let Ok(status) = child.wait() {
+                    if status.success() {
+                        return Ok(());
+                    }
                 }
             }
         }

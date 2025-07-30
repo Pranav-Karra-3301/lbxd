@@ -3,6 +3,7 @@ use crate::ascii::AsciiConverter;
 use crate::tmdb::{TMDBMovie, TMDBClient};
 use crate::viu::ViuViewer;
 use crate::batch_loader::BatchLoader;
+use crate::config::ConfigManager;
 use colored::*;
 use std::time::Duration;
 use tokio::time::interval;
@@ -22,6 +23,12 @@ impl DisplayEngine {
             tmdb_client: TMDBClient::new(),
             viu_viewer: ViuViewer::new(),
         }
+    }
+
+    fn get_pixelated_mode(&self) -> bool {
+        ConfigManager::new()
+            .map(|cm| cm.get_pixelated_mode().unwrap_or(true))
+            .unwrap_or(true)
     }
 
     pub async fn show_user_activity(&self, profile: &UserProfile, limit: Option<usize>, vertical: bool, ascii_mode: bool, width: u32) {
@@ -227,7 +234,8 @@ impl DisplayEngine {
                 // Check if viu is available
                 if ViuViewer::is_available() {
                     self.print_loading_animation("Loading poster...", 300).await;
-                    match self.viu_viewer.display_image_url(&url, width).await {
+                    let use_pixelated = self.get_pixelated_mode();
+                    match self.viu_viewer.display_image_url(&url, width, use_pixelated).await {
                         Ok(_) => {
                             // viu successfully displayed the image
                             println!(); // Add some spacing after viu display

@@ -103,7 +103,8 @@ impl AsciiConverter {
             .arg("--num_cols").arg(width.to_string())
             .arg("--scale").arg("1")  // Reduced from default 2 to 1 for better height
             .arg("--background").arg("black")
-            .arg("--mode").arg("blocks");  // Use Unicode block characters for better compactness
+            .arg("--mode").arg("blocks")  // Use Unicode block characters for better compactness
+            .arg("--square");  // Force images to 1:1 aspect ratio for ASCII display
         
         if supports_colors {
             cmd.arg("--color_output");
