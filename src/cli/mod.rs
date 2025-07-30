@@ -16,7 +16,7 @@ pub enum Commands {
     Recent {
         #[arg(help = "Letterboxd username")]
         username: String,
-        #[arg(short, long, help = "Number of entries to show")]
+        #[arg(short, long, help = "Number of entries to show", default_value = "4")]
         limit: Option<usize>,
         #[arg(short, long, help = "Filter by date (YYYY-MM-DD)")]
         date: Option<String>,
