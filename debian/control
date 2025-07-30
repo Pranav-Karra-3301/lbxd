@@ -1,0 +1,20 @@
+Package: lbxd
+Version: 0.1.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Maintainer: Pranav Karra <YOUR_EMAIL@example.com>
+Description: Beautiful command-line tool for Letterboxd
+ lbxd is a beautiful command-line tool written in Rust that lets you view
+ Letterboxd activity directly in your terminal. It fetches any user's public
+ RSS feed and displays their recent movies, ratings, and reviews in clean,
+ expressive ASCII art and stylized text.
+ .
+ Features:
+ - View recent activity for any Letterboxd user
+ - Search for specific titles in user activity
+ - Export data to JSON or Markdown formats
+ - Beautiful terminal display with ASCII art
+ - Intelligent caching for offline access
+ - Cross-platform support
+Homepage: https://github.com/Pranav-Karra-3301/lbxd

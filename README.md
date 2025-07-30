@@ -37,7 +37,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/pranavkarra/lbxd.git
+git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
 # Build and install
@@ -154,7 +154,7 @@ lbxd automatically creates a cache directory at `~/.cache/lbxd/` to store user d
 
 ```bash
 # Clone the repository
-git clone https://github.com/pranavkarra/lbxd.git
+git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
 # Run tests
@@ -205,6 +205,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 If you encounter any issues or have questions:
 
-- 🐛 [Report bugs](https://github.com/pranavkarra/lbxd/issues)
-- 💡 [Request features](https://github.com/pranavkarra/lbxd/issues)
-- 📖 [Read the documentation](https://github.com/pranavkarra/lbxd/wiki)
+- 🐛 [Report bugs](https://github.com/Pranav-Karra-3301/lbxd/issues)
+- 💡 [Request features](https://github.com/Pranav-Karra-3301/lbxd/issues)
+- 📖 [Read the documentation](https://github.com/Pranav-Karra-3301/lbxd/wiki)

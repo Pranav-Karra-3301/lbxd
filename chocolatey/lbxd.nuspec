@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>lbxd</id>
+    <version>0.1.0</version>
+    <packageSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</packageSourceUrl>
+    <owners>Pranav-Karra-3301</owners>
+    <title>lbxd</title>
+    <authors>Pranav Karra</authors>
+    <projectUrl>https://github.com/Pranav-Karra-3301/lbxd</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/assets/icon.png</iconUrl>
+    <copyright>2025 Pranav Karra</copyright>
+    <licenseUrl>https://github.com/Pranav-Karra-3301/lbxd/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</projectSourceUrl>
+    <docsUrl>https://github.com/Pranav-Karra-3301/lbxd/wiki</docsUrl>
+    <bugTrackerUrl>https://github.com/Pranav-Karra-3301/lbxd/issues</bugTrackerUrl>
+    <tags>letterboxd cli movies terminal rust</tags>
+    <summary>Beautiful command-line tool for Letterboxd</summary>
+    <description>
+lbxd is a beautiful command-line tool written in Rust that lets you view Letterboxd activity directly in your terminal. It fetches any user's public RSS feed and displays their recent movies, ratings, and reviews in clean, expressive ASCII art and stylized text.
+
+Features:
+- View recent activity for any Letterboxd user
+- Search for specific titles in user activity
+- Export data to JSON or Markdown formats
+- Beautiful terminal display with ASCII art
+- Intelligent caching for offline access
+- Cross-platform support
+    </description>
+    <releaseNotes>https://github.com/Pranav-Karra-3301/lbxd/releases</releaseNotes>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
