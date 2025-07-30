@@ -3,17 +3,31 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ColorMode {
+    Color,
+    Grayscale,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DisplayMode {
+    Pixelated,
+    FullResolution,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub username: Option<String>,
-    pub use_pixelated_mode: bool,
+    pub color_mode: ColorMode,
+    pub display_mode: DisplayMode,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             username: None,
-            use_pixelated_mode: true,
+            color_mode: ColorMode::Color,
+            display_mode: DisplayMode::Pixelated,
         }
     }
 }
@@ -68,15 +82,26 @@ impl ConfigManager {
             .unwrap_or(true)
     }
 
-    pub fn set_pixelated_mode(&self, use_pixelated: bool) -> Result<()> {
+    pub fn set_display_mode(&self, mode: DisplayMode) -> Result<()> {
         let mut config = self.load_config()?;
-        config.use_pixelated_mode = use_pixelated;
+        config.display_mode = mode;
         self.save_config(&config)
     }
 
-    pub fn get_pixelated_mode(&self) -> Result<bool> {
+    pub fn get_display_mode(&self) -> Result<DisplayMode> {
         let config = self.load_config()?;
-        Ok(config.use_pixelated_mode)
+        Ok(config.display_mode)
+    }
+
+    pub fn set_color_mode(&self, mode: ColorMode) -> Result<()> {
+        let mut config = self.load_config()?;
+        config.color_mode = mode;
+        self.save_config(&config)
+    }
+
+    pub fn get_color_mode(&self) -> Result<ColorMode> {
+        let config = self.load_config()?;
+        Ok(config.color_mode)
     }
 
     pub fn change_username(&self, new_username: String) -> Result<()> {

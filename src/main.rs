@@ -1,11 +1,11 @@
 use clap::Parser;
 use lbxd::{
-    cli::{Cli, Commands, ConfigCommands},
+    cli::{Cli, Commands, ConfigCommands, ColorModeArg, DisplayModeArg},
     display::DisplayEngine,
     feed::FeedParser,
     cache::CacheManager,
     export::ExportManager,
-    config::ConfigManager,
+    config::{ConfigManager, ColorMode, DisplayMode},
     tmdb::TMDBClient,
     onboarding::OnboardingManager,
 };
@@ -225,10 +225,39 @@ async fn main() {
                         Ok(config) => {
                             display.print_info("Current Configuration:");
                             println!("  Username: {}", config.username.unwrap_or_else(|| "Not set".to_string()));
-                            println!("  Pixelated mode: {}", if config.use_pixelated_mode { "Enabled" } else { "Disabled" });
+                            println!("  Color mode: {:?}", config.color_mode);
+                            println!("  Display mode: {:?}", config.display_mode);
                         },
                         Err(e) => {
                             display.print_error(&format!("Failed to read config: {}", e));
+                        }
+                    }
+                },
+                ConfigCommands::SwitchColor { mode } => {
+                    let color_mode = match mode {
+                        ColorModeArg::Color => ColorMode::Color,
+                        ColorModeArg::Grayscale => ColorMode::Grayscale,
+                    };
+                    match config_manager.set_color_mode(color_mode) {
+                        Ok(_) => {
+                            display.print_success(&format!("Color mode switched to: {:?}", mode));
+                        },
+                        Err(e) => {
+                            display.print_error(&format!("Failed to update color mode: {}", e));
+                        }
+                    }
+                },
+                ConfigCommands::SetMode { mode } => {
+                    let display_mode = match mode {
+                        DisplayModeArg::Pixelated => DisplayMode::Pixelated,
+                        DisplayModeArg::Full => DisplayMode::FullResolution,
+                    };
+                    match config_manager.set_display_mode(display_mode) {
+                        Ok(_) => {
+                            display.print_success(&format!("Display mode set to: {:?}", mode));
+                        },
+                        Err(e) => {
+                            display.print_error(&format!("Failed to update display mode: {}", e));
                         }
                     }
                 },

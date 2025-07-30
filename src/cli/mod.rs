@@ -92,6 +92,28 @@ pub enum ConfigCommands {
     },
     #[command(about = "⚙ Show all configuration settings")]
     Show,
+    #[command(about = "🎨 Switch between color and grayscale mode")]
+    SwitchColor {
+        #[arg(help = "Color mode (color/grayscale)", value_enum)]
+        mode: ColorModeArg,
+    },
+    #[command(about = "🖼 Switch between pixelated and full resolution posters")]
+    SetMode {
+        #[arg(help = "Display mode (pixelated/full)", value_enum)]
+        mode: DisplayModeArg,
+    },
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum ColorModeArg {
+    Color,
+    Grayscale,
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+pub enum DisplayModeArg {
+    Pixelated,
+    Full,
 }
 
 #[derive(clap::ValueEnum, Clone)]

@@ -3,7 +3,7 @@ use crate::ascii::AsciiConverter;
 use crate::tmdb::{TMDBMovie, TMDBClient};
 use crate::viu::ViuViewer;
 use crate::batch_loader::BatchLoader;
-use crate::config::ConfigManager;
+use crate::config::{ConfigManager, DisplayMode, ColorMode};
 use colored::*;
 use std::time::Duration;
 use tokio::time::interval;
@@ -25,10 +25,44 @@ impl DisplayEngine {
         }
     }
 
-    fn get_pixelated_mode(&self) -> bool {
+    fn get_display_mode(&self) -> bool {
         ConfigManager::new()
-            .map(|cm| cm.get_pixelated_mode().unwrap_or(true))
+            .map(|cm| cm.get_display_mode().unwrap_or(DisplayMode::Pixelated) == DisplayMode::Pixelated)
             .unwrap_or(true)
+    }
+
+    fn get_color_mode(&self) -> ColorMode {
+        ConfigManager::new()
+            .map(|cm| cm.get_color_mode().unwrap_or(ColorMode::Color))
+            .unwrap_or(ColorMode::Color)
+    }
+
+    fn apply_color(&self, text: &str, color: &str) -> String {
+        match self.get_color_mode() {
+            ColorMode::Color => text.color(color).to_string(),
+            ColorMode::Grayscale => text.normal().to_string(),
+        }
+    }
+
+    fn apply_style_with_color(&self, text: &str, style: &str, color: &str) -> String {
+        match self.get_color_mode() {
+            ColorMode::Color => {
+                match style {
+                    "bold" => text.color(color).bold().to_string(),
+                    "dimmed" => text.color(color).dimmed().to_string(),
+                    "bright" => text.color(color).bold().to_string(),
+                    _ => text.color(color).to_string(),
+                }
+            },
+            ColorMode::Grayscale => {
+                match style {
+                    "bold" => text.bold().to_string(),
+                    "dimmed" => text.dimmed().to_string(),
+                    "bright" => text.bright_white().to_string(),
+                    _ => text.normal().to_string(),
+                }
+            }
+        }
     }
 
     pub async fn show_user_activity(&self, profile: &UserProfile, limit: Option<usize>, vertical: bool, ascii_mode: bool, width: u32) {
@@ -234,7 +268,7 @@ impl DisplayEngine {
                 // Check if viu is available
                 if ViuViewer::is_available() {
                     self.print_loading_animation("Loading poster...", 300).await;
-                    let use_pixelated = self.get_pixelated_mode();
+                    let use_pixelated = self.get_display_mode();
                     match self.viu_viewer.display_image_url(&url, width, use_pixelated).await {
                         Ok(_) => {
                             // viu successfully displayed the image
@@ -645,5 +679,20 @@ impl DisplayEngine {
             }
             println!(); // Add spacing between entries
         }
+    }
+
+    pub fn print_help_screen(&self) {
+        let art = r#"
+██╗     ██████╗ ██╗  ██╗██████╗ 
+██║     ██╔══██╗╚██╗██╔╝██╔══██╗
+██║     ██████╔╝ ╚███╔╝ ██║  ██║
+██║     ██╔══██╗ ██╔██╗ ██║  ██║
+███████╗██████╔╝██╔╝ ██╗██████╔╝
+╚══════╝╚═════╝ ╚═╝  ╚═╝╚═════╝
+"#;
+        
+        println!("{}", "═".repeat(60));
+        println!("{}", self.apply_color(art, "#ff8000"));
+        println!("{}", "═".repeat(60));
     }
 }
