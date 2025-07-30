@@ -7,6 +7,7 @@ pub mod export;
 pub mod config;
 pub mod ascii;
 pub mod tmdb;
+pub mod viu;
 
 pub use cli::*;
 pub use display::*;
@@ -17,3 +18,4 @@ pub use export::*;
 pub use config::*;
 pub use ascii::*;
 pub use tmdb::*;
+pub use viu::*;

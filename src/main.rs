@@ -42,7 +42,7 @@ async fn main() {
     };
 
     match cli.command {
-        Commands::Recent { username, limit, date, rated, reviewed, vertical, width } => {
+        Commands::Recent { username, limit, date, rated, reviewed, vertical, ascii, width } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
                 return;
@@ -79,10 +79,10 @@ async fn main() {
             };
 
             let filtered_profile = filter_entries(profile, date, rated, reviewed);
-            display.show_user_activity(&filtered_profile, limit, vertical, width).await;
+            display.show_user_activity(&filtered_profile, limit, vertical, ascii, width).await;
         },
         
-        Commands::Search { username, title, width } => {
+        Commands::Search { username, title, ascii, width } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
                 return;
@@ -111,7 +111,7 @@ async fn main() {
                                 avatar_url: None,
                                 rss_url: profile.rss_url.clone(),
                                 entries: vec![entry.clone()],
-                            }, None, true, width).await; // Default to vertical for search results
+                            }, None, true, ascii, width).await; // Default to vertical for search results
                         }
                     }
                 },
@@ -159,7 +159,7 @@ async fn main() {
             display.print_error("Summary feature coming soon!");
         },
 
-        Commands::Movie { title, width } => {
+        Commands::Movie { title, ascii, width } => {
             if !config_manager.is_first_run() {
                 display.print_minimal_logo();
             }
@@ -169,7 +169,7 @@ async fn main() {
             
             match tmdb_client.search_movie(&title).await {
                 Ok(Some(movie)) => {
-                    display.show_tmdb_movie(&movie, width).await;
+                    display.show_tmdb_movie(&movie, ascii, width).await;
                 },
                 Ok(None) => {
                     display.print_error(&format!("No movies found for '{}'", title));

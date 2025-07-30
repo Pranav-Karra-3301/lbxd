@@ -2,8 +2,8 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "lbxd")]
-#[command(about = "✽ A beautiful command-line tool for Letterboxd ✽")]
-#[command(long_about = "✽✽✽ LBXD - Letterboxd in your terminal ✽✽✽\n\nA btop-style CLI tool featuring:\n★ Real movie poster ASCII art\n◆ Responsive grid layouts  \n▲ TMDB integration for reliable data\n● Dynamic terminal adaptation\n◉ Smooth loading animations\n\nDeveloped by https://pranavkarra.me")]
+#[command(about = "A beautiful command-line tool for Letterboxd")]
+#[command(long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Real movie poster display with viu\n◆ Colorful ASCII art mode with Unicode blocks\n▲ TMDB integration for reliable data\n● Dynamic terminal adaptation\n◉ Smooth loading animations\n\nDeveloped by https://pranavkarra.me")]
 #[command(version)]
 pub struct Cli {
     #[command(subcommand)]
@@ -26,7 +26,9 @@ pub enum Commands {
         reviewed: bool,
         #[arg(short = 'v', long, help = "Display in vertical layout")]
         vertical: bool,
-        #[arg(long, help = "ASCII art width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "80")]
+        #[arg(long, help = "Use ASCII art instead of viu (terminal image viewer)")]
+        ascii: bool,
+        #[arg(long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
     },
     #[command(about = "◆ Search for specific titles in user history")]
@@ -35,7 +37,9 @@ pub enum Commands {
         username: String,
         #[arg(help = "Movie title to search for")]
         title: String,
-        #[arg(long, help = "ASCII art width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "80")]
+        #[arg(long, help = "Use ASCII art instead of viu (terminal image viewer)")]
+        ascii: bool,
+        #[arg(long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
     },
     #[command(about = "▲ Compare multiple users (coming soon)")]
@@ -63,7 +67,9 @@ pub enum Commands {
     Movie {
         #[arg(help = "Movie title to search for")]
         title: String,
-        #[arg(short, long, help = "ASCII art width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "80")]
+        #[arg(long, help = "Use ASCII art instead of viu (terminal image viewer)")]
+        ascii: bool,
+        #[arg(short, long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
     },
     #[command(about = "⚙ Manage user configuration settings")]

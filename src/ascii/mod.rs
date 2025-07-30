@@ -103,7 +103,7 @@ impl AsciiConverter {
             .arg("--num_cols").arg(width.to_string())
             .arg("--scale").arg("1")  // Reduced from default 2 to 1 for better height
             .arg("--background").arg("black")
-            .arg("--mode").arg("standard");  // Use standard ASCII characters
+            .arg("--mode").arg("blocks");  // Use Unicode block characters for better compactness
         
         if supports_colors {
             cmd.arg("--color_output");
@@ -141,6 +141,14 @@ impl AsciiConverter {
 
     pub fn create_minimal_header() -> String {
         format!("{} lbxd", Self::create_letterboxd_logo())
+    }
+    
+    pub fn create_colored_triple_stars() -> String {
+        format!("{}{}{}", 
+            "✽".color("#ff8000"),  // Orange
+            "✽".color("#00d735"),  // Green  
+            "✽".color("#40bcf4")   // Blue
+        )
     }
     
     pub fn create_activity_header(username: &str) -> String {

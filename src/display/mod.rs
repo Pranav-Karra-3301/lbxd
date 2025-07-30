@@ -1,6 +1,7 @@
 use crate::models::{UserEntry, UserProfile, ViewingSummary};
 use crate::ascii::AsciiConverter;
 use crate::tmdb::{TMDBMovie, TMDBClient};
+use crate::viu::ViuViewer;
 use colored::*;
 use std::time::Duration;
 use tokio::time::interval;
@@ -10,6 +11,7 @@ use regex::Regex;
 pub struct DisplayEngine {
     ascii_converter: AsciiConverter,
     tmdb_client: TMDBClient,
+    viu_viewer: ViuViewer,
 }
 
 impl DisplayEngine {
@@ -17,10 +19,11 @@ impl DisplayEngine {
         Self {
             ascii_converter: AsciiConverter::new(),
             tmdb_client: TMDBClient::new(),
+            viu_viewer: ViuViewer::new(),
         }
     }
 
-    pub async fn show_user_activity(&self, profile: &UserProfile, limit: Option<usize>, vertical: bool, width: u32) {
+    pub async fn show_user_activity(&self, profile: &UserProfile, limit: Option<usize>, vertical: bool, ascii_mode: bool, width: u32) {
         // Use the new activity header method (no "lbxd" logo for activity)
         self.print_activity_header(&profile.username);
         
@@ -32,10 +35,10 @@ impl DisplayEngine {
 
         if vertical {
             for entry in entries_to_show.iter() {
-                self.display_entry_with_tmdb_lookup(entry, width).await;
+                self.display_entry_with_tmdb_lookup(entry, ascii_mode, width).await;
             }
         } else {
-            self.display_entries_horizontal_grid_tmdb(&entries_to_show, width).await;
+            self.display_entries_horizontal_grid_tmdb(&entries_to_show, ascii_mode, width).await;
         }
     }
 
@@ -46,7 +49,7 @@ impl DisplayEngine {
         println!("  📝 Total Reviews: {}", summary.total_reviews.to_string().cyan().bold());
         
         if let Some(avg) = summary.average_rating {
-            println!("  ⭐ Average Rating: {:.1}/5", avg.to_string().yellow().bold());
+            println!("  ⭐ Average Rating: {:.1}/5", avg.to_string().color("#00d735").bold());
         }
 
         if !summary.top_movies.is_empty() {
@@ -76,7 +79,7 @@ impl DisplayEngine {
     }
 
     fn print_minimal_header(&self, title: &str) {
-        println!("\n{} {}", AsciiConverter::create_letterboxd_logo(), title.white().bold());
+        println!("\n{} {}", AsciiConverter::create_colored_triple_stars(), title.white().bold());
         println!("{}", AsciiConverter::create_gradient_border(50, "─"));
         println!();
     }
@@ -167,11 +170,11 @@ impl DisplayEngine {
 
 
 
-    pub async fn show_tmdb_movie(&self, movie: &TMDBMovie, width: u32) {
+    pub async fn show_tmdb_movie(&self, movie: &TMDBMovie, ascii_mode: bool, width: u32) {
         self.print_minimal_header(&format!("Movie: {}", movie.title));
         
         // Use the unified display function
-        self.display_movie_with_poster(&movie.title, movie.get_year(), movie.get_full_poster_url(), Some(movie.vote_average), movie.release_date.as_ref(), movie.overview.as_ref(), None, None, None, width).await;
+        self.display_movie_with_poster(&movie.title, movie.get_year(), movie.get_full_poster_url(), Some(movie.vote_average), movie.release_date.as_ref(), movie.overview.as_ref(), None, None, None, ascii_mode, width).await;
         
         println!();
         TMDBClient::print_tmdb_attribution();
@@ -189,31 +192,76 @@ impl DisplayEngine {
         user_rating: Option<f32>,
         review: Option<&String>,
         watched_date: Option<chrono::DateTime<chrono::Utc>>,
+        ascii_mode: bool,
         width: u32
     ) {
-        let ascii_art = if let Some(url) = poster_url {
-            self.print_loading_animation("Fetching poster...", 500).await;
-            match self.ascii_converter.convert_poster_to_ascii(&url, width).await {
-                Ok((art, _aspect_ratio)) => art,
-                Err(_) => {
-                    let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-                    AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
+        if ascii_mode {
+            // ASCII Art Mode
+            let ascii_art = if let Some(url) = poster_url {
+                self.print_loading_animation("Fetching poster...", 500).await;
+                match self.ascii_converter.convert_poster_to_ascii(&url, width).await {
+                    Ok((art, _aspect_ratio)) => art,
+                    Err(_) => {
+                        let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                        AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
+                    }
                 }
-            }
-        } else {
-            let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-            AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
-        };
+            } else {
+                let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
+            };
 
-        // Print ASCII art as a complete block without mixing with metadata
-        println!("{}", AsciiConverter::create_gradient_border(80, "─"));
-        println!();
-        
-        // Display the ASCII art cleanly
-        println!("{}", ascii_art);
-        
-        println!();
-        println!("{}", AsciiConverter::create_gradient_border(80, "─"));
+            // Print ASCII art as a complete block without mixing with metadata
+            println!("{}", AsciiConverter::create_gradient_border(80, "─"));
+            println!();
+            
+            // Display the ASCII art cleanly
+            println!("{}", ascii_art);
+            
+            println!();
+            println!("{}", AsciiConverter::create_gradient_border(80, "─"));
+        } else {
+            // Viu Mode (default)
+            if let Some(ref url) = poster_url {
+                // Check if viu is available
+                if ViuViewer::is_available() {
+                    self.print_loading_animation("Loading poster...", 300).await;
+                    match self.viu_viewer.display_image_url(&url, width).await {
+                        Ok(_) => {
+                            // viu successfully displayed the image
+                            println!(); // Add some spacing after viu display
+                        },
+                        Err(_) => {
+                            self.print_warning("Failed to display image, falling back to ASCII");
+                            // Fallback to ASCII
+                            match self.ascii_converter.convert_poster_to_ascii(&url, width).await {
+                                Ok((art, _)) => println!("{}", art),
+                                Err(_) => {
+                                    let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                                    println!("{}", AsciiConverter::get_colored_fallback_poster_ascii(fallback_width));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    self.print_warning("viu not found. Install viu for better image display or use --ascii flag");
+                    println!("{}", ViuViewer::get_installation_instructions());
+                    
+                    // Fallback to ASCII
+                    if let Some(url) = &poster_url {
+                        match self.ascii_converter.convert_poster_to_ascii(url, width).await {
+                            Ok((art, _)) => println!("{}", art),
+                            Err(_) => {
+                                let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                                println!("{}", AsciiConverter::get_colored_fallback_poster_ascii(fallback_width));
+                            }
+                        }
+                    }
+                }
+            } else {
+                self.print_warning("No poster URL available");
+            }
+        }
         
         // Display movie metadata separately below the ASCII art
         let title_with_year = if let Some(year) = year {
@@ -223,19 +271,31 @@ impl DisplayEngine {
         };
         println!("\n{}", title_with_year.white().bold());
         
-        // Show user rating (Letterboxd style) with bigger, green stars
+        // Show user rating (Letterboxd style) with grey background stars and green filled stars
         if let Some(rating) = user_rating {
             let full_stars = rating as usize;
-            let half_star = if rating % 1.0 > 0.0 { "★" } else { "" };
-            let stars = "★".repeat(full_stars);
-            println!("{}{} ({:.1}/5)", stars.color("#00d735").bold(), half_star.color("#00d735").bold(), rating.to_string().color("#00d735").bold());
+            let half_star = rating % 1.0 > 0.0;
+            let mut rating_display = String::new();
+            
+            // Create 5 stars total, with filled stars for the rating
+            for i in 0..5 {
+                if i < full_stars {
+                    rating_display.push_str(&"★".color("#00d735").bold().to_string());
+                } else if i == full_stars && half_star {
+                    rating_display.push_str(&"★".color("#00d735").bold().to_string());
+                } else {
+                    rating_display.push_str(&"★".truecolor(100, 100, 100).to_string());
+                }
+            }
+            
+            println!("{} ({:.1}/5)", rating_display, rating.to_string().color("#00d735").bold());
         }
         
         // Show TMDB rating if available and no user rating
         if user_rating.is_none() {
             if let Some(tmdb_rating) = tmdb_rating {
                 if tmdb_rating > 0.0 {
-                    println!("⭐ {:.1}/10 (TMDB)", tmdb_rating.to_string().yellow().bold());
+                    println!("⭐ {:.1}/10 (TMDB)", tmdb_rating.to_string().color("#00d735").bold());
                 }
             }
         }
@@ -260,7 +320,7 @@ impl DisplayEngine {
     }
 
     // New method to display an entry by fetching TMDB data like the movie command
-    async fn display_entry_with_tmdb_lookup(&self, entry: &UserEntry, width: u32) {
+    async fn display_entry_with_tmdb_lookup(&self, entry: &UserEntry, ascii_mode: bool, width: u32) {
         // Clean the title for better TMDB search results  
         let cleaned_title = self.clean_title_for_search(&entry.movie.title);
         
@@ -287,6 +347,7 @@ impl DisplayEngine {
                     entry.rating,
                     entry.review.as_ref(),
                     entry.watched_date,
+                    ascii_mode,
                     width
                 ).await;
             },
@@ -306,6 +367,7 @@ impl DisplayEngine {
                                 entry.rating,
                                 entry.review.as_ref(),
                                 entry.watched_date,
+                                ascii_mode,
                                 width
                             ).await;
                         },
@@ -322,6 +384,7 @@ impl DisplayEngine {
                                 entry.rating,
                                 entry.review.as_ref(),
                                 entry.watched_date,
+                                ascii_mode,
                                 width
                             ).await;
                         },
@@ -338,6 +401,7 @@ impl DisplayEngine {
                                 entry.rating,
                                 entry.review.as_ref(),
                                 entry.watched_date,
+                                ascii_mode,
                                 width
                             ).await;
                         }
@@ -355,6 +419,7 @@ impl DisplayEngine {
                         entry.rating,
                         entry.review.as_ref(),
                         entry.watched_date,
+                        ascii_mode,
                         width
                     ).await;
                 }
@@ -372,6 +437,7 @@ impl DisplayEngine {
                     entry.rating,
                     entry.review.as_ref(),
                     entry.watched_date,
+                    ascii_mode,
                     width
                 ).await;
             }
@@ -396,7 +462,7 @@ impl DisplayEngine {
     }
 
     // Horizontal grid layout with TMDB integration
-    async fn display_entries_horizontal_grid_tmdb(&self, entries: &[&UserEntry], width: u32) {
+    async fn display_entries_horizontal_grid_tmdb(&self, entries: &[&UserEntry], ascii_mode: bool, width: u32) {
         if entries.is_empty() {
             return;
         }
@@ -419,13 +485,24 @@ impl DisplayEngine {
                 println!();
             }
             
-            self.print_poster_row_tmdb(chunk, width).await;
+            self.print_poster_row_tmdb(chunk, ascii_mode, width).await;
             println!(); // spacing between rows
         }
     }
 
     // Generate a row of posters using TMDB for each entry
-    async fn print_poster_row_tmdb(&self, entries: &[&UserEntry], width: u32) {
+    async fn print_poster_row_tmdb(&self, entries: &[&UserEntry], ascii_mode: bool, width: u32) {
+        if ascii_mode {
+            // ASCII mode: Use the original grid layout
+            self.print_ascii_poster_row_tmdb(entries, width).await;
+        } else {
+            // viu mode: Display each poster individually using viu
+            self.print_viu_poster_row_tmdb(entries, width).await;
+        }
+    }
+
+    // ASCII grid layout (original implementation)
+    async fn print_ascii_poster_row_tmdb(&self, entries: &[&UserEntry], width: u32) {
         // Show loading animation for poster fetching
         if entries.len() > 1 {
             self.print_loading_animation(&format!("Loading {} posters...", entries.len()), 300).await;
@@ -535,20 +612,32 @@ impl DisplayEngine {
             println!();
         }
 
-        // Print ratings with green Letterboxd-style stars
+        // Print ratings with grey background stars and green filled stars
         for (i, (entry, _)) in movie_data.iter().enumerate() {
             if let Some(rating) = entry.rating {
                 let full_stars = rating as usize;
-                let half_star = if rating % 1.0 > 0.0 { "★" } else { "" };
-                let stars = "★".repeat(full_stars);
-                let rating_str = format!("{}{} ({:.1}/5)", stars, half_star, rating);
-                let max_rating_width = width as usize;
-                let truncated_rating = if rating_str.len() > max_rating_width {
+                let half_star = rating % 1.0 > 0.0;
+                let mut rating_display = String::new();
+                
+                // Create 5 stars total, with filled stars for the rating
+                for star_idx in 0..5 {
+                    if star_idx < full_stars {
+                        rating_display.push_str(&"★".color("#00d735").bold().to_string());
+                    } else if star_idx == full_stars && half_star {
+                        rating_display.push_str(&"★".color("#00d735").bold().to_string());
+                    } else {
+                        rating_display.push_str(&"★".truecolor(100, 100, 100).to_string());
+                    }
+                }
+                
+                let rating_str = format!("{} ({:.1})", rating_display, rating);
+                let max_rating_width = width as usize + 10; // Account for ANSI codes
+                let truncated_rating = if rating_str.chars().count() > max_rating_width {
                     format!("{}...", &rating_str[..max_rating_width.saturating_sub(3)])
                 } else {
                     rating_str
                 };
-                print!("{:<width$}", truncated_rating.color("#00d735").bold(), width = width as usize + 2);
+                print!("{:<width$}", truncated_rating, width = width as usize + 2);
             } else {
                 print!("{:<width$}", "", width = width as usize + 2);
             }
@@ -577,5 +666,19 @@ impl DisplayEngine {
             }
         }
         println!();
+    }
+
+    // viu display for horizontal layout - display each poster individually
+    async fn print_viu_poster_row_tmdb(&self, entries: &[&UserEntry], width: u32) {
+        // Show loading animation for poster fetching
+        if entries.len() > 1 {
+            self.print_loading_animation(&format!("Loading {} posters...", entries.len()), 300).await;
+        }
+        
+        // Display each entry individually using the unified display method (like vertical mode)
+        for entry in entries {
+            self.display_entry_with_tmdb_lookup(entry, false, width).await;
+            println!(); // Add spacing between entries
+        }
     }
 }
