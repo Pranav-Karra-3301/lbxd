@@ -16,6 +16,7 @@ def get_args():
     parser = argparse.ArgumentParser("Image to ASCII")
     parser.add_argument("--input", type=str, required=True, help="Path to input image")
     parser.add_argument("--output", type=str, required=True, help="Path to output text file")
+    parser.add_argument("--aspect_ratio_file", type=str, help="Path to output aspect ratio file")
     parser.add_argument("--language", type=str, default="english")
     parser.add_argument("--mode", type=str, default="standard")
     parser.add_argument("--background", type=str, default="black", choices=["black", "white"],
@@ -46,6 +47,9 @@ def main(opt):
             
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         height, width, _ = image.shape
+        
+        # Calculate original aspect ratio
+        original_aspect_ratio = width / height
         
         cell_width = width / opt.num_cols
         cell_height = scale * cell_width
@@ -87,6 +91,11 @@ def main(opt):
         # Write output
         with open(opt.output, 'w', encoding='utf-8') as f:
             f.write('\n'.join(ascii_lines))
+        
+        # Write aspect ratio if requested
+        if opt.aspect_ratio_file:
+            with open(opt.aspect_ratio_file, 'w') as f:
+                f.write(str(original_aspect_ratio))
             
         print(f"ASCII art generated successfully: {opt.output}")
         

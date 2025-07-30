@@ -92,26 +92,26 @@ impl DisplayEngine {
             entry.movie.title.clone()
         };
         
-        // Use optimal poster size with configurable width
-        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(width);
-
         let ascii_art = if let Some(poster_url) = &entry.movie.poster_url {
             // Show loading animation for individual poster
             self.print_loading_animation(&format!("Loading poster for {}...", entry.movie.title), 200).await;
             
             if poster_url.starts_with("http") && (poster_url.contains(".jpg") || poster_url.contains(".png") || poster_url.contains(".jpeg") || poster_url.contains(".webp")) {
-                match self.ascii_converter.convert_poster_to_ascii(poster_url, poster_width).await {
-                    Ok(art) => art,
+                match self.ascii_converter.convert_poster_to_ascii(poster_url, width).await {
+                    Ok((art, _aspect_ratio)) => art,
                     Err(e) => {
                         eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
-                        AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+                        let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                        AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
                     }
                 }
             } else {
-                AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+                let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
             }
         } else {
-            AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+            let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+            AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
         };
 
         let lines: Vec<&str> = ascii_art.lines().collect();
@@ -121,7 +121,7 @@ impl DisplayEngine {
         println!();
 
         for (i, line) in lines.iter().enumerate() {
-            print!("{:<width$}", line.dimmed(), width = poster_width as usize + 2);
+            print!("{:<width$}", line.dimmed(), width = width as usize + 2);
             
             if i == 0 {
                 println!("{}", title_with_year.white().bold());
@@ -252,11 +252,8 @@ impl DisplayEngine {
             80 // fallback width
         };
 
-        // Use optimal poster size with configurable width
-        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(width);
-        
-        // Calculate spacing: poster + padding + margin
-        let column_width = poster_width as usize + 4; // 4 chars for spacing
+        // Calculate spacing: poster + padding + margin  
+        let column_width = width as usize + 4; // 4 chars for spacing
         let posters_per_row = std::cmp::max(1, term_width / column_width);
         
         // Print with better spacing and organization
@@ -273,9 +270,6 @@ impl DisplayEngine {
     }
 
     async fn print_poster_row(&self, entries: &[&UserEntry], width: u32) {
-        // Use optimal poster size with configurable width
-        let (poster_width, _poster_height) = AsciiConverter::get_optimal_poster_size(width);
-        
         // Show loading animation for poster fetching
         if entries.len() > 1 {
             self.print_loading_animation(&format!("Loading {} posters...", entries.len()), 300).await;
@@ -286,21 +280,24 @@ impl DisplayEngine {
         for entry in entries {
             let ascii_art = if let Some(poster_url) = &entry.movie.poster_url {
                 if poster_url.starts_with("http") && (poster_url.contains(".jpg") || poster_url.contains(".png") || poster_url.contains(".jpeg") || poster_url.contains(".webp")) {
-                    match self.ascii_converter.convert_poster_to_ascii(poster_url, poster_width).await {
-                        Ok(art) => art,
+                    match self.ascii_converter.convert_poster_to_ascii(poster_url, width).await {
+                        Ok((art, _aspect_ratio)) => art,
                         Err(e) => {
                             // More informative error logging for debugging
                             eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
-                            AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+                            let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                            AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
                         }
                     }
                 } else {
-                    AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+                    let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                    AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
                 }
             } else {
                 // No poster URL found, using fallback
                 eprintln!("ℹ No poster URL found for '{}' (using fallback)", entry.movie.title);
-                AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+                let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
             };
             ascii_arts.push(ascii_art);
         }
@@ -312,13 +309,13 @@ impl DisplayEngine {
             } else {
                 entry.movie.title.clone()
             };
-            let max_title_width = poster_width as usize - 2;
+            let max_title_width = width as usize - 2;
             let truncated_title = if title_with_year.len() > max_title_width {
                 format!("{}...", &title_with_year[..max_title_width.saturating_sub(3)])
             } else {
                 title_with_year
             };
-            print!("{:<width$}", truncated_title.white().bold(), width = poster_width as usize + 2);
+            print!("{:<width$}", truncated_title.white().bold(), width = width as usize + 2);
             if i < entries.len() - 1 {
                 print!("  ");
             }
@@ -331,9 +328,9 @@ impl DisplayEngine {
             for (art_idx, ascii_art) in ascii_arts.iter().enumerate() {
                 let lines: Vec<&str> = ascii_art.lines().collect();
                 if line_idx < lines.len() {
-                    print!("{:<width$}", lines[line_idx], width = poster_width as usize + 2);
+                    print!("{:<width$}", lines[line_idx], width = width as usize + 2);
                 } else {
-                    print!("{:<width$}", "", width = poster_width as usize + 2);
+                    print!("{:<width$}", "", width = width as usize + 2);
                 }
                 if art_idx < ascii_arts.len() - 1 {
                     print!("  ");
@@ -348,15 +345,15 @@ impl DisplayEngine {
                 let stars = "★".repeat(rating as usize);
                 let half_star = if rating % 1.0 > 0.0 { "½" } else { "" };
                 let rating_str = format!("{}{} ({:.1}/5)", stars, half_star, rating);
-                let max_rating_width = poster_width as usize;
+                let max_rating_width = width as usize;
                 let truncated_rating = if rating_str.len() > max_rating_width {
                     format!("{}...", &rating_str[..max_rating_width.saturating_sub(3)])
                 } else {
                     rating_str
                 };
-                print!("{:<width$}", truncated_rating.yellow(), width = poster_width as usize + 2);
+                print!("{:<width$}", truncated_rating.yellow(), width = width as usize + 2);
             } else {
-                print!("{:<width$}", "", width = poster_width as usize + 2);
+                print!("{:<width$}", "", width = width as usize + 2);
             }
             if i < entries.len() - 1 {
                 print!("  ");
@@ -368,15 +365,15 @@ impl DisplayEngine {
         for (i, entry) in entries.iter().enumerate() {
             if let Some(date) = entry.watched_date {
                 let date_str = date.format("%B %d, %Y").to_string();
-                let max_date_width = poster_width as usize;
+                let max_date_width = width as usize;
                 let truncated_date = if date_str.len() > max_date_width {
                     format!("{}...", &date_str[..max_date_width.saturating_sub(3)])
                 } else {
                     date_str
                 };
-                print!("{:<width$}", truncated_date.dimmed(), width = poster_width as usize + 2);
+                print!("{:<width$}", truncated_date.dimmed(), width = width as usize + 2);
             } else {
-                print!("{:<width$}", "", width = poster_width as usize + 2);
+                print!("{:<width$}", "", width = width as usize + 2);
             }
             if i < entries.len() - 1 {
                 print!("  ");
@@ -388,15 +385,18 @@ impl DisplayEngine {
     pub async fn show_tmdb_movie(&self, movie: &TMDBMovie, width: u32) {
         self.print_minimal_header(&format!("Movie: {}", movie.title));
         
-        let poster_width = width;
         let ascii_art = if let Some(poster_url) = movie.get_full_poster_url() {
             self.print_loading_animation("Fetching poster...", 500).await;
-            match self.ascii_converter.convert_poster_to_ascii(&poster_url, poster_width).await {
-                Ok(art) => art,
-                Err(_) => AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+            match self.ascii_converter.convert_poster_to_ascii(&poster_url, width).await {
+                Ok((art, _aspect_ratio)) => art,
+                Err(_) => {
+                    let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                    AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
+                }
             }
         } else {
-            AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
+            let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+            AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
         };
 
         // Print ASCII art as a complete block without mixing with metadata

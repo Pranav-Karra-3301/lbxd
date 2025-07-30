@@ -50,10 +50,10 @@ impl AsciiConverter {
         false
     }
 
-    pub async fn convert_poster_to_ascii(&self, poster_url: &str, width: u32) -> Result<String> {
+    pub async fn convert_poster_to_ascii(&self, poster_url: &str, width: u32) -> Result<(String, f32)> {
         let image_data = self.fetch_image(poster_url).await?;
-        let ascii_art = self.image_to_ascii_python(&image_data, width)?;
-        Ok(ascii_art)
+        let (ascii_art, aspect_ratio) = self.image_to_ascii_python(&image_data, width)?;
+        Ok((ascii_art, aspect_ratio))
     }
 
     async fn fetch_image(&self, url: &str) -> Result<Vec<u8>> {
@@ -67,7 +67,7 @@ impl AsciiConverter {
         Ok(bytes.to_vec())
     }
 
-    fn image_to_ascii_python(&self, image_data: &[u8], width: u32) -> Result<String> {
+    fn image_to_ascii_python(&self, image_data: &[u8], width: u32) -> Result<(String, f32)> {
         // Create temporary file for input image
         let mut temp_input = NamedTempFile::new()
             .map_err(|e| anyhow::anyhow!("Failed to create temp input file: {}", e))?;
@@ -79,8 +79,13 @@ impl AsciiConverter {
         let temp_output = NamedTempFile::new()
             .map_err(|e| anyhow::anyhow!("Failed to create temp output file: {}", e))?;
         
+        // Create temporary file for aspect ratio
+        let temp_aspect_ratio = NamedTempFile::new()
+            .map_err(|e| anyhow::anyhow!("Failed to create temp aspect ratio file: {}", e))?;
+        
         let input_path = temp_input.path().to_string_lossy();
         let output_path = temp_output.path().to_string_lossy();
+        let aspect_ratio_path = temp_aspect_ratio.path().to_string_lossy();
         
         // Get the Python script path relative to the binary
         let python_script_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/python");
@@ -94,6 +99,7 @@ impl AsciiConverter {
         cmd.arg(&script_path)
             .arg("--input").arg(&*input_path)
             .arg("--output").arg(&*output_path)
+            .arg("--aspect_ratio_file").arg(&*aspect_ratio_path)
             .arg("--num_cols").arg(width.to_string())
             .arg("--background").arg("black")
             .arg("--mode").arg("standard");
@@ -115,7 +121,13 @@ impl AsciiConverter {
         let ascii_content = fs::read_to_string(&*output_path)
             .map_err(|e| anyhow::anyhow!("Failed to read ASCII output: {}", e))?;
         
-        Ok(ascii_content)
+        // Read the aspect ratio
+        let aspect_ratio_str = fs::read_to_string(&*aspect_ratio_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read aspect ratio: {}", e))?;
+        let aspect_ratio: f32 = aspect_ratio_str.trim().parse()
+            .map_err(|e| anyhow::anyhow!("Failed to parse aspect ratio: {}", e))?;
+        
+        Ok((ascii_content, aspect_ratio))
     }
 
     pub fn create_letterboxd_logo() -> String {
@@ -219,9 +231,14 @@ impl AsciiConverter {
         (width, height)
     }
     
-    pub fn get_optimal_poster_size(width: u32) -> (u32, u32) {
-        // ASCII characters are roughly 2x taller than wide, so use 0.6x height for proper aspect ratio
-        let height = (width as f32 * 0.6) as u32;
+    pub fn get_optimal_poster_size(width: u32, aspect_ratio: Option<f32>) -> (u32, u32) {
+        let height = if let Some(ratio) = aspect_ratio {
+            // ASCII characters are roughly 2x taller than wide, so adjust by 0.5
+            (width as f32 / ratio * 0.5) as u32
+        } else {
+            // Default fallback for movie posters (typical 2:3 ratio)
+            (width as f32 * 0.75) as u32
+        };
         (width, height)
     }
 }
