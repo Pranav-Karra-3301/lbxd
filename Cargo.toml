@@ -1,0 +1,26 @@
+[package]
+name = "lbxd"
+version = "0.1.0"
+edition = "2021"
+description = "A beautiful command-line tool for Letterboxd"
+homepage = "https://github.com/pranavkarra/lbxd"
+repository = "https://github.com/pranavkarra/lbxd"
+license = "MIT"
+keywords = ["letterboxd", "cli", "movies", "rss", "terminal"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+feed-rs = "2.1"
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1.0"
+colored = "2.0"
+regex = "1.10"
+dirs = "5.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
