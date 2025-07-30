@@ -37,28 +37,62 @@ impl DisplayEngine {
             .unwrap_or(ColorMode::Color)
     }
 
-    fn apply_color(&self, text: &str, color: &str) -> String {
+    fn apply_ansi_color(&self, text: &str, color: &str) -> String {
         match self.get_color_mode() {
-            ColorMode::Color => text.color(color).to_string(),
+            ColorMode::Color => {
+                match color {
+                    "red" => text.red().to_string(),
+                    "green" => text.green().to_string(),
+                    "yellow" => text.yellow().to_string(),
+                    "blue" => text.blue().to_string(),
+                    "magenta" => text.magenta().to_string(),
+                    "cyan" => text.cyan().to_string(),
+                    "white" => text.white().to_string(),
+                    "bright_red" => text.bright_red().to_string(),
+                    "bright_green" => text.bright_green().to_string(),
+                    "bright_yellow" => text.bright_yellow().to_string(),
+                    "bright_blue" => text.bright_blue().to_string(),
+                    "bright_magenta" => text.bright_magenta().to_string(),
+                    "bright_cyan" => text.bright_cyan().to_string(),
+                    "bright_white" => text.bright_white().to_string(),
+                    _ => text.normal().to_string(),
+                }
+            },
             ColorMode::Grayscale => text.normal().to_string(),
         }
     }
 
-    fn apply_style_with_color(&self, text: &str, style: &str, color: &str) -> String {
+    fn apply_style_with_ansi_color(&self, text: &str, style: &str, color: &str) -> String {
         match self.get_color_mode() {
             ColorMode::Color => {
+                let colored_text = match color {
+                    "red" => text.red(),
+                    "green" => text.green(),
+                    "yellow" => text.yellow(),
+                    "blue" => text.blue(),
+                    "magenta" => text.magenta(),
+                    "cyan" => text.cyan(),
+                    "white" => text.white(),
+                    "bright_red" => text.bright_red(),
+                    "bright_green" => text.bright_green(),
+                    "bright_yellow" => text.bright_yellow(),
+                    "bright_blue" => text.bright_blue(),
+                    "bright_magenta" => text.bright_magenta(),
+                    "bright_cyan" => text.bright_cyan(),
+                    "bright_white" => text.bright_white(),
+                    _ => text.normal(),
+                };
+                
                 match style {
-                    "bold" => text.color(color).bold().to_string(),
-                    "dimmed" => text.color(color).dimmed().to_string(),
-                    "bright" => text.color(color).bold().to_string(),
-                    _ => text.color(color).to_string(),
+                    "bold" => colored_text.bold().to_string(),
+                    "dimmed" => colored_text.dimmed().to_string(),
+                    _ => colored_text.to_string(),
                 }
             },
             ColorMode::Grayscale => {
                 match style {
                     "bold" => text.bold().to_string(),
                     "dimmed" => text.dimmed().to_string(),
-                    "bright" => text.bright_white().to_string(),
                     _ => text.normal().to_string(),
                 }
             }
@@ -692,7 +726,7 @@ impl DisplayEngine {
 "#;
         
         println!("{}", "═".repeat(60));
-        println!("{}", self.apply_color(art, "#ff8000"));
+        println!("{}", self.apply_ansi_color(art, "bright_yellow"));
         println!("{}", "═".repeat(60));
     }
 }

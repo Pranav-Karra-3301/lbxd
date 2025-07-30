@@ -134,9 +134,9 @@ impl AsciiConverter {
 
     pub fn create_letterboxd_logo() -> String {
         format!("{}{}{}", 
-            "✽".color("#ff8000"),  // Orange
-            "✽".color("#00d735"),  // Green  
-            "✽".color("#40bcf4")   // Blue
+            "✽".bright_yellow(),  // Yellow instead of orange
+            "✽".bright_green(),   // Green  
+            "✽".bright_blue()     // Blue
         )
     }
 
@@ -146,9 +146,9 @@ impl AsciiConverter {
     
     pub fn create_colored_triple_stars() -> String {
         format!("{}{}{}", 
-            "✽".color("#ff8000"),  // Orange
-            "✽".color("#00d735"),  // Green  
-            "✽".color("#40bcf4")   // Blue
+            "✽".bright_yellow(),  // Yellow instead of orange
+            "✽".bright_green(),   // Green  
+            "✽".bright_blue()     // Blue
         )
     }
     
@@ -180,8 +180,12 @@ impl AsciiConverter {
         let height = (width as f32 * 1.5) as u32; // Movie poster aspect ratio (2:3)
         let mut result = String::new();
         
-        // Letterboxd colors: orange (#ff8000), green (#00d735), blue (#40bcf4)
-        let colors = ["#ff8000", "#00d735", "#40bcf4"];
+        // ANSI colors: yellow, green, blue
+        let colors = [
+            |s: &str| s.bright_yellow(),
+            |s: &str| s.bright_green(),
+            |s: &str| s.bright_blue(),
+        ];
         
         // Create a more sophisticated pattern
         for y in 0..height {
@@ -196,15 +200,15 @@ impl AsciiConverter {
                         2 => "╮",
                         _ => "│",
                     };
-                    result.push_str(&char.color(colors[color_idx]).to_string());
+                    result.push_str(&colors[color_idx](char).to_string());
                 } else if (y == height / 4 && x >= width / 3 && x < 2 * width / 3) ||
                          (y == height / 2 && x >= width / 4 && x < 3 * width / 4) ||
                          (y == 3 * height / 4 && x >= width / 3 && x < 2 * width / 3) {
                     // Central pattern with ✽ symbols
-                    result.push_str(&"✽".color(colors[color_idx]).bold().to_string());
+                    result.push_str(&colors[color_idx]("✽").bold().to_string());
                 } else if (x + y) % 8 == 0 {
                     // Subtle background pattern
-                    result.push_str(&"·".color(colors[color_idx]).dimmed().to_string());
+                    result.push_str(&colors[color_idx]("·").dimmed().to_string());
                 } else {
                     result.push(' ');
                 }
@@ -216,12 +220,16 @@ impl AsciiConverter {
     }
     
     pub fn create_gradient_border(width: usize, style: &str) -> String {
-        let colors = ["#ff8000", "#00d735", "#40bcf4"];
+        let colors = [
+            |s: &str| s.bright_yellow(),
+            |s: &str| s.bright_green(),
+            |s: &str| s.bright_blue(),
+        ];
         let mut result = String::new();
         
         for i in 0..width {
             let color_idx = (i * 3 / width.max(1)) % 3;
-            result.push_str(&style.color(colors[color_idx]).to_string());
+            result.push_str(&colors[color_idx](style).to_string());
         }
         
         result

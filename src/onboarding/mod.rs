@@ -59,7 +59,7 @@ impl OnboardingManager {
             "{}
 
             Welcome to lbxd",
-            art.color("#ff8000")
+            art.bright_yellow()
         )
     }
 
@@ -101,50 +101,76 @@ impl OnboardingManager {
             "●".red(), "●".green(), "●".yellow(), "●".blue(), 
             "●".magenta(), "●".cyan(), "●".white(), "●".black());
             
-        println!("{} {}", "Set 2:".white().bold(), "RGB Colors (Letterboxd theme)");
-        println!("  {} {} {}", 
-            "●".color("#ff8000"), "●".color("#00d735"), "●".color("#40bcf4"));
-            
-        println!("{} {}", "Set 3:".white().bold(), "Bright Colors");
+        println!("{} {}", "Set 2:".white().bold(), "Bright Colors");
         println!("  {} {} {} {}", 
             "★".bright_red(), "★".bright_green(), "★".bright_yellow(), "★".bright_blue());
             
-        println!("{} {}", "Set 4:".white().bold(), "Gradients");
-        println!("  {} {} {} {} {}", 
-            "▓".color("#ff0000"), "▓".color("#ff4000"), "▓".color("#ff8000"), 
-            "▓".color("#ffc000"), "▓".color("#ffff00"));
+        println!("{} {}", "Set 3:".white().bold(), "Theme Colors");
+        println!("  {} {} {}", 
+            "✽".red(), "✽".green(), "✽".blue());
         
         println!();
         
-        loop {
-            println!("{}", "Which color sets are clearly visible?".bright_cyan());
-            println!("  {} All colors look great", "[1]".bright_green());
-            println!("  {} Some colors are visible", "[2]".bright_yellow());
-            println!("  {} Only basic colors work", "[3]".bright_red());
-            println!("  {} No colors visible (grayscale only)", "[4]".white());
+        // First ask which sets work
+        let colors_work = loop {
+            println!("{}", "Which color sets can you see clearly?".bright_cyan());
+            println!("  {} All sets are clearly visible", "[all]".bright_green());
+            println!("  {} Some sets are visible", "[some]".bright_yellow());
+            println!("  {} No colors visible (black and white only)", "[none]".white());
             
-            print!("{} ", "Your choice (1-4):".bright_cyan());
+            print!("{} ", "Your choice (all/some/none):".bright_cyan());
             io::stdout().flush()?;
             
             let mut input = String::new();
             io::stdin().read_line(&mut input)?;
-            let response = input.trim();
+            let response = input.trim().to_lowercase();
             
-            match response {
-                "1" => {
-                    println!("{} {}", "✓".green().bold(), "Excellent! Full color support detected.".green());
-                    return Ok(ColorMode::Color);
+            match response.as_str() {
+                "all" => {
+                    println!("{} {}", "✓".green().bold(), "Great! Your terminal has excellent color support.".green());
+                    break true;
                 },
-                "2" | "3" => {
-                    println!("{} {}", "✓".yellow().bold(), "Good! Basic color support detected.".yellow());
-                    return Ok(ColorMode::Color);
+                "some" => {
+                    println!("{} {}", "✓".yellow().bold(), "Good! Your terminal has basic color support.".yellow());
+                    break true;
                 },
-                "4" => {
-                    println!("{} {}", "ℹ".white().bold(), "Using grayscale mode for better compatibility.".white());
+                "none" => {
+                    println!("{} {}", "ℹ".white().bold(), "No problem! We'll use grayscale mode.".white());
                     return Ok(ColorMode::Grayscale);
                 },
-                _ => println!("{}", "Please enter 1, 2, 3, or 4.".red()),
+                _ => println!("{}", "Please enter 'all', 'some', or 'none'.".red()),
             }
+        };
+        
+        // If colors work, ask for preference
+        if colors_work {
+            println!();
+            loop {
+                println!("{}", "Color preference:".bright_cyan());
+                println!("  {} Use colors (recommended)", "[color]".bright_green());
+                println!("  {} Use grayscale (better compatibility)", "[grayscale]".white());
+                
+                print!("{} ", "Your choice (color/grayscale):".bright_cyan());
+                io::stdout().flush()?;
+                
+                let mut input = String::new();
+                io::stdin().read_line(&mut input)?;
+                let response = input.trim().to_lowercase();
+                
+                match response.as_str() {
+                    "color" | "c" => {
+                        println!("{} {}", "✓".green().bold(), "Color mode selected.".green());
+                        return Ok(ColorMode::Color);
+                    },
+                    "grayscale" | "g" => {
+                        println!("{} {}", "✓".white().bold(), "Grayscale mode selected.".white());
+                        return Ok(ColorMode::Grayscale);
+                    },
+                    _ => println!("{}", "Please enter 'color' or 'grayscale'.".red()),
+                }
+            }
+        } else {
+            Ok(ColorMode::Grayscale)
         }
     }
 
@@ -199,17 +225,17 @@ impl OnboardingManager {
         // Create a simple letterboxd-style welcome
         let welcome_art = format!(
             "{}  Welcome to Letterboxd  {}",
-            "✽".color("#ff8000"),
-            "✽".color("#40bcf4")
+            "✽".bright_yellow(),
+            "✽".bright_blue()
         );
         
         println!("{}", welcome_art);
         
         let subtitle = format!(
             "{}{}{}",
-            "in ASCII art! ".color("#00d735"),
-            "Enjoy exploring movies ".color("#ff8000"),
-            "in your terminal.".color("#40bcf4")
+            "in ASCII art! ".bright_green(),
+            "Enjoy exploring movies ".bright_yellow(),
+            "in your terminal.".bright_blue()
         );
         
         println!("{}", subtitle);
