@@ -5,15 +5,18 @@ use colored::*;
 use std::time::Duration;
 use tokio::time::interval;
 use terminal_size::{Width, Height, terminal_size};
+use regex::Regex;
 
 pub struct DisplayEngine {
     ascii_converter: AsciiConverter,
+    tmdb_client: TMDBClient,
 }
 
 impl DisplayEngine {
     pub fn new() -> Self {
         Self {
             ascii_converter: AsciiConverter::new(),
+            tmdb_client: TMDBClient::new(),
         }
     }
 
@@ -29,10 +32,10 @@ impl DisplayEngine {
 
         if vertical {
             for entry in entries_to_show.iter() {
-                self.print_entry_with_ascii_vertical(entry, width).await;
+                self.display_entry_with_tmdb_lookup(entry, width).await;
             }
         } else {
-            self.print_entries_horizontal_grid(&entries_to_show, width).await;
+            self.display_entries_horizontal_grid_tmdb(&entries_to_show, width).await;
         }
     }
 
@@ -85,85 +88,6 @@ impl DisplayEngine {
     }
 
 
-    async fn print_entry_with_ascii_vertical(&self, entry: &UserEntry, width: u32) {
-        let title_with_year = if let Some(year) = entry.movie.year {
-            format!("{} ({})", entry.movie.title, year)
-        } else {
-            entry.movie.title.clone()
-        };
-        
-        let ascii_art = if let Some(poster_url) = &entry.movie.poster_url {
-            // Show loading animation for individual poster
-            self.print_loading_animation(&format!("Loading poster for {}...", entry.movie.title), 200).await;
-            
-            if poster_url.starts_with("http") && (poster_url.contains(".jpg") || poster_url.contains(".png") || poster_url.contains(".jpeg") || poster_url.contains(".webp")) {
-                match self.ascii_converter.convert_poster_to_ascii(poster_url, width).await {
-                    Ok((art, _aspect_ratio)) => art,
-                    Err(e) => {
-                        eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
-                        let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-                        AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
-                    }
-                }
-            } else {
-                let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-                AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
-            }
-        } else {
-            let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-            AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
-        };
-
-        let lines: Vec<&str> = ascii_art.lines().collect();
-        let max_lines = lines.len();
-
-        println!("{}", AsciiConverter::create_gradient_border(80, "─"));
-        println!();
-
-        for (i, line) in lines.iter().enumerate() {
-            print!("{:<width$}", line.dimmed(), width = width as usize + 2);
-            
-            if i == 0 {
-                println!("{}", title_with_year.white().bold());
-            } else if i == 2 {
-                if let Some(rating) = entry.rating {
-                    let stars = "★".repeat(rating as usize);
-                    let half_star = if rating % 1.0 > 0.0 { "½" } else { "" };
-                    println!("{}{} ({:.1}/5)", stars.yellow(), half_star.yellow(), rating.to_string().yellow().bold());
-                } else {
-                    println!();
-                }
-            } else if i == 4 && entry.liked {
-                println!("{} Liked", "♥".red());
-            } else if i == 6 {
-                if let Some(review) = &entry.review {
-                    let clean_review = self.clean_html(review);
-                    if !clean_review.is_empty() {
-                        let truncated = if clean_review.len() > 80 {
-                            format!("{}...", &clean_review[..80])
-                        } else {
-                            clean_review
-                        };
-                        println!("{}", truncated.white());
-                    } else {
-                        println!();
-                    }
-                } else {
-                    println!();
-                }
-            } else if i == max_lines - 2 {
-                if let Some(date) = entry.watched_date {
-                    println!("{}", date.format("%B %d, %Y").to_string().dimmed());
-                } else {
-                    println!();
-                }
-            } else {
-                println!();
-            }
-        }
-        
-        println!();
-    }
 
     pub fn print_ascii_art(&self) {
         let art = r#"
@@ -241,153 +165,35 @@ impl DisplayEngine {
         cleaned
     }
 
-    async fn print_entries_horizontal_grid(&self, entries: &[&UserEntry], width: u32) {
-        if entries.is_empty() {
-            return;
-        }
 
-        let term_width = if let Some((Width(w), Height(_))) = terminal_size() {
-            w as usize
-        } else {
-            80 // fallback width
-        };
-
-        // Calculate spacing: poster + padding + margin  
-        let column_width = width as usize + 4; // 4 chars for spacing
-        let posters_per_row = std::cmp::max(1, term_width / column_width);
-        
-        // Print with better spacing and organization
-        for (chunk_idx, chunk) in entries.chunks(posters_per_row).enumerate() {
-            if chunk_idx > 0 {
-                // Add elegant row separator  
-                println!("{}", AsciiConverter::create_gradient_border(term_width, "·"));
-                println!();
-            }
-            
-            self.print_poster_row(chunk, width).await;
-            println!(); // spacing between rows
-        }
-    }
-
-    async fn print_poster_row(&self, entries: &[&UserEntry], width: u32) {
-        // Show loading animation for poster fetching
-        if entries.len() > 1 {
-            self.print_loading_animation(&format!("Loading {} posters...", entries.len()), 300).await;
-        }
-        
-        // Collect all ASCII arts first
-        let mut ascii_arts = Vec::new();
-        for entry in entries {
-            let ascii_art = if let Some(poster_url) = &entry.movie.poster_url {
-                if poster_url.starts_with("http") && (poster_url.contains(".jpg") || poster_url.contains(".png") || poster_url.contains(".jpeg") || poster_url.contains(".webp")) {
-                    match self.ascii_converter.convert_poster_to_ascii(poster_url, width).await {
-                        Ok((art, _aspect_ratio)) => art,
-                        Err(e) => {
-                            // More informative error logging for debugging
-                            eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
-                            let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-                            AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
-                        }
-                    }
-                } else {
-                    let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-                    AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
-                }
-            } else {
-                // No poster URL found, using fallback
-                eprintln!("ℹ No poster URL found for '{}' (using fallback)", entry.movie.title);
-                let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
-                AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
-            };
-            ascii_arts.push(ascii_art);
-        }
-
-        // Print titles
-        for (i, entry) in entries.iter().enumerate() {
-            let title_with_year = if let Some(year) = entry.movie.year {
-                format!("{} ({})", entry.movie.title, year)
-            } else {
-                entry.movie.title.clone()
-            };
-            let max_title_width = width as usize - 2;
-            let truncated_title = if title_with_year.len() > max_title_width {
-                format!("{}...", &title_with_year[..max_title_width.saturating_sub(3)])
-            } else {
-                title_with_year
-            };
-            print!("{:<width$}", truncated_title.white().bold(), width = width as usize + 2);
-            if i < entries.len() - 1 {
-                print!("  ");
-            }
-        }
-        println!();
-
-        // Print ASCII posters line by line
-        let max_lines = ascii_arts.iter().map(|art| art.lines().count()).max().unwrap_or(0);
-        for line_idx in 0..max_lines {
-            for (art_idx, ascii_art) in ascii_arts.iter().enumerate() {
-                let lines: Vec<&str> = ascii_art.lines().collect();
-                if line_idx < lines.len() {
-                    print!("{:<width$}", lines[line_idx], width = width as usize + 2);
-                } else {
-                    print!("{:<width$}", "", width = width as usize + 2);
-                }
-                if art_idx < ascii_arts.len() - 1 {
-                    print!("  ");
-                }
-            }
-            println!();
-        }
-
-        // Print ratings
-        for (i, entry) in entries.iter().enumerate() {
-            if let Some(rating) = entry.rating {
-                let stars = "★".repeat(rating as usize);
-                let half_star = if rating % 1.0 > 0.0 { "½" } else { "" };
-                let rating_str = format!("{}{} ({:.1}/5)", stars, half_star, rating);
-                let max_rating_width = width as usize;
-                let truncated_rating = if rating_str.len() > max_rating_width {
-                    format!("{}...", &rating_str[..max_rating_width.saturating_sub(3)])
-                } else {
-                    rating_str
-                };
-                print!("{:<width$}", truncated_rating.yellow(), width = width as usize + 2);
-            } else {
-                print!("{:<width$}", "", width = width as usize + 2);
-            }
-            if i < entries.len() - 1 {
-                print!("  ");
-            }
-        }
-        println!();
-
-        // Print dates
-        for (i, entry) in entries.iter().enumerate() {
-            if let Some(date) = entry.watched_date {
-                let date_str = date.format("%B %d, %Y").to_string();
-                let max_date_width = width as usize;
-                let truncated_date = if date_str.len() > max_date_width {
-                    format!("{}...", &date_str[..max_date_width.saturating_sub(3)])
-                } else {
-                    date_str
-                };
-                print!("{:<width$}", truncated_date.dimmed(), width = width as usize + 2);
-            } else {
-                print!("{:<width$}", "", width = width as usize + 2);
-            }
-            if i < entries.len() - 1 {
-                print!("  ");
-            }
-        }
-        println!();
-    }
 
     pub async fn show_tmdb_movie(&self, movie: &TMDBMovie, width: u32) {
         self.print_minimal_header(&format!("Movie: {}", movie.title));
         
-        let ascii_art = if let Some(poster_url) = movie.get_full_poster_url() {
+        // Use the unified display function
+        self.display_movie_with_poster(&movie.title, movie.get_year(), movie.get_full_poster_url(), Some(movie.vote_average), movie.release_date.as_ref(), movie.overview.as_ref(), None, None, None, width).await;
+        
+        println!();
+        TMDBClient::print_tmdb_attribution();
+    }
+
+    // Unified function to display a movie with poster and metadata
+    pub async fn display_movie_with_poster(
+        &self, 
+        title: &str, 
+        year: Option<i32>, 
+        poster_url: Option<String>, 
+        tmdb_rating: Option<f32>,
+        release_date: Option<&String>,
+        overview: Option<&String>,
+        user_rating: Option<f32>,
+        review: Option<&String>,
+        watched_date: Option<chrono::DateTime<chrono::Utc>>,
+        width: u32
+    ) {
+        let ascii_art = if let Some(url) = poster_url {
             self.print_loading_animation("Fetching poster...", 500).await;
-            match self.ascii_converter.convert_poster_to_ascii(&poster_url, width).await {
+            match self.ascii_converter.convert_poster_to_ascii(&url, width).await {
                 Ok((art, _aspect_ratio)) => art,
                 Err(_) => {
                     let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
@@ -410,28 +216,366 @@ impl DisplayEngine {
         println!("{}", AsciiConverter::create_gradient_border(80, "─"));
         
         // Display movie metadata separately below the ASCII art
-        let title_with_year = if let Some(year) = movie.get_year() {
-            format!("{} ({})", movie.title, year)
+        let title_with_year = if let Some(year) = year {
+            format!("{} ({})", title, year)
         } else {
-            movie.title.clone()
+            title.to_string()
         };
         println!("\n{}", title_with_year.white().bold());
         
-        if movie.vote_average > 0.0 {
-            println!("⭐ {:.1}/10 (TMDB)", movie.vote_average.to_string().yellow().bold());
+        // Show user rating (Letterboxd style) with bigger, green stars
+        if let Some(rating) = user_rating {
+            let full_stars = rating as usize;
+            let half_star = if rating % 1.0 > 0.0 { "★" } else { "" };
+            let stars = "★".repeat(full_stars);
+            println!("{}{} ({:.1}/5)", stars.color("#00d735").bold(), half_star.color("#00d735").bold(), rating.to_string().color("#00d735").bold());
         }
         
-        if let Some(release_date) = &movie.release_date {
+        // Show TMDB rating if available and no user rating
+        if user_rating.is_none() {
+            if let Some(tmdb_rating) = tmdb_rating {
+                if tmdb_rating > 0.0 {
+                    println!("⭐ {:.1}/10 (TMDB)", tmdb_rating.to_string().yellow().bold());
+                }
+            }
+        }
+        
+        if let Some(date) = watched_date {
+            println!("📅 {}", date.format("%B %d, %Y").to_string().dimmed());
+        } else if let Some(release_date) = release_date {
             println!("📅 {}", release_date.dimmed());
         }
         
-        if let Some(overview) = &movie.overview {
+        // Show review if available
+        if let Some(review_text) = review {
+            let clean_review = self.clean_html(review_text);
+            if !clean_review.is_empty() {
+                println!("\n{}", clean_review.white());
+            }
+        } else if let Some(overview) = overview {
             if !overview.is_empty() {
                 println!("\n{}", overview.white());
             }
         }
+    }
+
+    // New method to display an entry by fetching TMDB data like the movie command
+    async fn display_entry_with_tmdb_lookup(&self, entry: &UserEntry, width: u32) {
+        // Clean the title for better TMDB search results  
+        let cleaned_title = self.clean_title_for_search(&entry.movie.title);
         
+        // Create search query with year if available for better accuracy
+        let search_query = if let Some(year) = entry.movie.year {
+            format!("{} {}", cleaned_title, year)
+        } else {
+            cleaned_title.clone()
+        };
+        
+        eprintln!("🔍 Searching TMDB for: '{}' (cleaned from: '{}')", search_query, entry.movie.title);
+        
+        // Search TMDB for the movie (exactly like movie command)
+        match self.tmdb_client.search_movie(&search_query).await {
+            Ok(Some(movie)) => {
+                // Use the unified display function with user data
+                self.display_movie_with_poster(
+                    &entry.movie.title,
+                    entry.movie.year,
+                    movie.get_full_poster_url(),
+                    Some(movie.vote_average),
+                    movie.release_date.as_ref(),
+                    movie.overview.as_ref(),
+                    entry.rating,
+                    entry.review.as_ref(),
+                    entry.watched_date,
+                    width
+                ).await;
+            },
+            Ok(None) => {
+                // Try searching without year if first search failed
+                if entry.movie.year.is_some() {
+                    eprintln!("🔍 Retrying TMDB search without year: '{}'", cleaned_title);
+                    match self.tmdb_client.search_movie(&cleaned_title).await {
+                        Ok(Some(movie)) => {
+                            self.display_movie_with_poster(
+                                &entry.movie.title,
+                                entry.movie.year,
+                                movie.get_full_poster_url(),
+                                Some(movie.vote_average),
+                                movie.release_date.as_ref(),
+                                movie.overview.as_ref(),
+                                entry.rating,
+                                entry.review.as_ref(),
+                                entry.watched_date,
+                                width
+                            ).await;
+                        },
+                        Ok(None) => {
+                            eprintln!("❌ No TMDB results for '{}' (no year)", cleaned_title);
+                            // Show without poster
+                            self.display_movie_with_poster(
+                                &entry.movie.title,
+                                entry.movie.year,
+                                None,
+                                None,
+                                None,
+                                None,
+                                entry.rating,
+                                entry.review.as_ref(),
+                                entry.watched_date,
+                                width
+                            ).await;
+                        },
+                        Err(e) => {
+                            eprintln!("💥 TMDB API error for '{}' (no year): {}", cleaned_title, e);
+                            // Show without poster
+                            self.display_movie_with_poster(
+                                &entry.movie.title,
+                                entry.movie.year,
+                                None,
+                                None,
+                                None,
+                                None,
+                                entry.rating,
+                                entry.review.as_ref(),
+                                entry.watched_date,
+                                width
+                            ).await;
+                        }
+                    }
+                } else {
+                    eprintln!("❌ No TMDB results for '{}'", search_query);
+                    // Show without poster
+                    self.display_movie_with_poster(
+                        &entry.movie.title,
+                        entry.movie.year,
+                        None,
+                        None,
+                        None,
+                        None,
+                        entry.rating,
+                        entry.review.as_ref(),
+                        entry.watched_date,
+                        width
+                    ).await;
+                }
+            },
+            Err(e) => {
+                eprintln!("💥 TMDB API error for '{}': {}", search_query, e);
+                // Show without poster
+                self.display_movie_with_poster(
+                    &entry.movie.title,
+                    entry.movie.year,
+                    None,
+                    None,
+                    None,
+                    None,
+                    entry.rating,
+                    entry.review.as_ref(),
+                    entry.watched_date,
+                    width
+                ).await;
+            }
+        }
+    }
+
+    fn clean_title_for_search(&self, title: &str) -> String {
+        // Remove common problematic characters and patterns that might interfere with TMDB search
+        let mut cleaned = title.to_string();
+        
+        // Remove trailing asterisks (like "Thunderbolts*")
+        cleaned = cleaned.trim_end_matches('*').to_string();
+        
+        // Remove extra whitespace and normalize
+        cleaned = cleaned.trim().to_string();
+        
+        // Replace multiple spaces with single space
+        let re = Regex::new(r"\s+").unwrap();
+        cleaned = re.replace_all(&cleaned, " ").to_string();
+        
+        cleaned
+    }
+
+    // Horizontal grid layout with TMDB integration
+    async fn display_entries_horizontal_grid_tmdb(&self, entries: &[&UserEntry], width: u32) {
+        if entries.is_empty() {
+            return;
+        }
+
+        let term_width = if let Some((Width(w), Height(_))) = terminal_size() {
+            w as usize
+        } else {
+            80 // fallback width
+        };
+
+        // Calculate spacing: poster + padding + margin  
+        let column_width = width as usize + 4; // 4 chars for spacing
+        let posters_per_row = std::cmp::max(1, term_width / column_width);
+        
+        // Print with better spacing and organization
+        for (chunk_idx, chunk) in entries.chunks(posters_per_row).enumerate() {
+            if chunk_idx > 0 {
+                // Add elegant row separator  
+                println!("{}", AsciiConverter::create_gradient_border(term_width, "·"));
+                println!();
+            }
+            
+            self.print_poster_row_tmdb(chunk, width).await;
+            println!(); // spacing between rows
+        }
+    }
+
+    // Generate a row of posters using TMDB for each entry
+    async fn print_poster_row_tmdb(&self, entries: &[&UserEntry], width: u32) {
+        // Show loading animation for poster fetching
+        if entries.len() > 1 {
+            self.print_loading_animation(&format!("Loading {} posters...", entries.len()), 300).await;
+        }
+        
+        // Collect all movie data with TMDB lookups first
+        let mut movie_data = Vec::new();
+        for entry in entries {
+            // Clean the title for better TMDB search results  
+            let cleaned_title = self.clean_title_for_search(&entry.movie.title);
+            
+            // Create search query with year if available for better accuracy
+            let search_query = if let Some(year) = entry.movie.year {
+                format!("{} {}", cleaned_title, year)
+            } else {
+                cleaned_title.clone()
+            };
+            
+            eprintln!("🔍 Searching TMDB for: '{}' (cleaned from: '{}')", search_query, entry.movie.title);
+            
+            // Search TMDB for the movie (exactly like vertical mode)
+            let poster_url = match self.tmdb_client.search_movie(&search_query).await {
+                Ok(Some(movie)) => movie.get_full_poster_url(),
+                Ok(None) => {
+                    // Try searching without year if first search failed
+                    if entry.movie.year.is_some() {
+                        eprintln!("🔍 Retrying TMDB search without year: '{}'", cleaned_title);
+                        match self.tmdb_client.search_movie(&cleaned_title).await {
+                            Ok(Some(movie)) => movie.get_full_poster_url(),
+                            Ok(None) => {
+                                eprintln!("❌ No TMDB results for '{}' (no year)", cleaned_title);
+                                None
+                            },
+                            Err(e) => {
+                                eprintln!("💥 TMDB API error for '{}' (no year): {}", cleaned_title, e);
+                                None
+                            }
+                        }
+                    } else {
+                        eprintln!("❌ No TMDB results for '{}'", search_query);
+                        None
+                    }
+                },
+                Err(e) => {
+                    eprintln!("💥 TMDB API error for '{}': {}", search_query, e);
+                    None
+                }
+            };
+            
+            movie_data.push((entry, poster_url));
+        }
+        
+        // Generate ASCII arts for all posters
+        let mut ascii_arts = Vec::new();
+        for (entry, poster_url) in &movie_data {
+            let ascii_art = if let Some(url) = poster_url {
+                match self.ascii_converter.convert_poster_to_ascii(url, width).await {
+                    Ok((art, _aspect_ratio)) => art,
+                    Err(e) => {
+                        eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
+                        let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                        AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
+                    }
+                }
+            } else {
+                eprintln!("ℹ No poster URL found for '{},' (using fallback)", entry.movie.title);
+                let (fallback_width, _) = AsciiConverter::get_optimal_poster_size(width, None);
+                AsciiConverter::get_colored_fallback_poster_ascii(fallback_width)
+            };
+            ascii_arts.push(ascii_art);
+        }
+
+        // Print titles
+        for (i, (entry, _)) in movie_data.iter().enumerate() {
+            let title_with_year = if let Some(year) = entry.movie.year {
+                format!("{} ({})", entry.movie.title, year)
+            } else {
+                entry.movie.title.clone()
+            };
+            let max_title_width = width as usize - 2;
+            let truncated_title = if title_with_year.len() > max_title_width {
+                format!("{}...", &title_with_year[..max_title_width.saturating_sub(3)])
+            } else {
+                title_with_year
+            };
+            print!("{:<width$}", truncated_title.white().bold(), width = width as usize + 2);
+            if i < movie_data.len() - 1 {
+                print!("  ");
+            }
+        }
         println!();
-        TMDBClient::print_tmdb_attribution();
+
+        // Print ASCII posters line by line
+        let max_lines = ascii_arts.iter().map(|art| art.lines().count()).max().unwrap_or(0);
+        for line_idx in 0..max_lines {
+            for (art_idx, ascii_art) in ascii_arts.iter().enumerate() {
+                let lines: Vec<&str> = ascii_art.lines().collect();
+                if line_idx < lines.len() {
+                    print!("{:<width$}", lines[line_idx], width = width as usize + 2);
+                } else {
+                    print!("{:<width$}", "", width = width as usize + 2);
+                }
+                if art_idx < ascii_arts.len() - 1 {
+                    print!("  ");
+                }
+            }
+            println!();
+        }
+
+        // Print ratings with green Letterboxd-style stars
+        for (i, (entry, _)) in movie_data.iter().enumerate() {
+            if let Some(rating) = entry.rating {
+                let full_stars = rating as usize;
+                let half_star = if rating % 1.0 > 0.0 { "★" } else { "" };
+                let stars = "★".repeat(full_stars);
+                let rating_str = format!("{}{} ({:.1}/5)", stars, half_star, rating);
+                let max_rating_width = width as usize;
+                let truncated_rating = if rating_str.len() > max_rating_width {
+                    format!("{}...", &rating_str[..max_rating_width.saturating_sub(3)])
+                } else {
+                    rating_str
+                };
+                print!("{:<width$}", truncated_rating.color("#00d735").bold(), width = width as usize + 2);
+            } else {
+                print!("{:<width$}", "", width = width as usize + 2);
+            }
+            if i < movie_data.len() - 1 {
+                print!("  ");
+            }
+        }
+        println!();
+
+        // Print dates
+        for (i, (entry, _)) in movie_data.iter().enumerate() {
+            if let Some(date) = entry.watched_date {
+                let date_str = date.format("%B %d, %Y").to_string();
+                let max_date_width = width as usize;
+                let truncated_date = if date_str.len() > max_date_width {
+                    format!("{}...", &date_str[..max_date_width.saturating_sub(3)])
+                } else {
+                    date_str
+                };
+                print!("{:<width$}", truncated_date.dimmed(), width = width as usize + 2);
+            } else {
+                print!("{:<width$}", "", width = width as usize + 2);
+            }
+            if i < movie_data.len() - 1 {
+                print!("  ");
+            }
+        }
+        println!();
     }
 }

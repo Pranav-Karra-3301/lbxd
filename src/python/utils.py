@@ -49,7 +49,7 @@ def get_data(language="english", mode="standard"):
     sample_character = "M"
     
     # Scale factor
-    scale = 0.42  # Aspect ratio compensation for monospace fonts
+    scale = 0.43  # Aspect ratio compensation for monospace fonts
     
     return char_list, font, sample_character, scale
 

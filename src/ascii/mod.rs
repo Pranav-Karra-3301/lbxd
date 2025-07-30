@@ -94,15 +94,16 @@ impl AsciiConverter {
         // Check if terminal supports colors
         let supports_colors = Self::detect_terminal_colors();
         
-        // Build Python command
+        // Build Python command with reduced scale for better terminal display
         let mut cmd = Command::new("python3");
         cmd.arg(&script_path)
             .arg("--input").arg(&*input_path)
             .arg("--output").arg(&*output_path)
             .arg("--aspect_ratio_file").arg(&*aspect_ratio_path)
             .arg("--num_cols").arg(width.to_string())
+            .arg("--scale").arg("1")  // Reduced from default 2 to 1 for better height
             .arg("--background").arg("black")
-            .arg("--mode").arg("standard");
+            .arg("--mode").arg("blocks");  // Use block characters for vertical compactness
         
         if supports_colors {
             cmd.arg("--color_output");
@@ -147,7 +148,7 @@ impl AsciiConverter {
     }
 
     pub fn get_fallback_poster_ascii(width: u32) -> String {
-        let height = (width as f32 * 0.6) as u32;
+        let height = (width as f32 * 1.5) as u32;
         let mut result = String::new();
         
         for y in 0..height {

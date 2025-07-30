@@ -1,5 +1,4 @@
 use crate::models::{Movie, UserEntry, UserProfile, EntryType};
-use crate::tmdb::TMDBClient;
 use anyhow::{anyhow, Result};
 use feed_rs::parser;
 use regex::Regex;
@@ -8,7 +7,6 @@ use std::time::Duration;
 
 pub struct FeedParser {
     client: reqwest::Client,
-    tmdb_client: TMDBClient,
 }
 
 impl FeedParser {
@@ -21,7 +19,6 @@ impl FeedParser {
             
         Self { 
             client,
-            tmdb_client: TMDBClient::new(),
         }
     }
 
@@ -89,15 +86,13 @@ impl FeedParser {
             (title.to_string(), None)
         };
         
-        // Get poster URL from TMDB instead of scraping Letterboxd
-        let poster_url = self.get_tmdb_poster_url(&movie_title, year).await;
-        
+        // Don't fetch poster URL here - let the display handle TMDB lookup
         Some(Movie {
             title: movie_title,
             year,
             director: None,
             letterboxd_url: url.to_string(),
-            poster_url,
+            poster_url: None,  // Will be fetched by display layer using TMDB
             tmdb_id: None,
         })
     }
@@ -123,59 +118,4 @@ impl FeedParser {
         }
     }
 
-    async fn get_tmdb_poster_url(&self, title: &str, year: Option<i32>) -> Option<String> {
-        // Create search query with year if available for better accuracy
-        let search_query = if let Some(year) = year {
-            format!("{} {}", title, year)
-        } else {
-            title.to_string()
-        };
-        
-        eprintln!("🔍 Searching TMDB for: '{}'", search_query);
-        
-        // Search TMDB for the movie
-        match self.tmdb_client.search_movie(&search_query).await {
-            Ok(Some(movie)) => {
-                let poster_url = movie.get_high_quality_poster_url();
-                if let Some(ref url) = poster_url {
-                    eprintln!("✅ Found TMDB poster for '{}': {}", title, url);
-                } else {
-                    eprintln!("⚠ TMDB movie found for '{}' but no poster_path available", title);
-                }
-                poster_url
-            },
-            Ok(None) => {
-                eprintln!("❌ No TMDB results for '{}'", search_query);
-                // Try searching without year if first search failed
-                if year.is_some() {
-                    eprintln!("🔍 Retrying TMDB search without year: '{}'", title);
-                    match self.tmdb_client.search_movie(title).await {
-                        Ok(Some(movie)) => {
-                            let poster_url = movie.get_high_quality_poster_url();
-                            if let Some(ref url) = poster_url {
-                                eprintln!("✅ Found TMDB poster for '{}' (no year): {}", title, url);
-                            } else {
-                                eprintln!("⚠ TMDB movie found for '{}' (no year) but no poster_path", title);
-                            }
-                            poster_url
-                        },
-                        Ok(None) => {
-                            eprintln!("❌ No TMDB results for '{}' (no year)", title);
-                            None
-                        },
-                        Err(e) => {
-                            eprintln!("💥 TMDB API error for '{}' (no year): {}", title, e);
-                            None
-                        }
-                    }
-                } else {
-                    None
-                }
-            },
-            Err(e) => {
-                eprintln!("💥 TMDB API error for '{}': {}", search_query, e);
-                None
-            }
-        }
-    }
 }
