@@ -17,7 +17,7 @@ impl DisplayEngine {
         }
     }
 
-    pub async fn show_user_activity(&self, profile: &UserProfile, limit: Option<usize>, vertical: bool) {
+    pub async fn show_user_activity(&self, profile: &UserProfile, limit: Option<usize>, vertical: bool, width: u32) {
         // Use the new activity header method (no "lbxd" logo for activity)
         self.print_activity_header(&profile.username);
         
@@ -29,10 +29,10 @@ impl DisplayEngine {
 
         if vertical {
             for entry in entries_to_show.iter() {
-                self.print_entry_with_ascii_vertical(entry).await;
+                self.print_entry_with_ascii_vertical(entry, width).await;
             }
         } else {
-            self.print_entries_horizontal_grid(&entries_to_show).await;
+            self.print_entries_horizontal_grid(&entries_to_show, width).await;
         }
     }
 
@@ -85,15 +85,15 @@ impl DisplayEngine {
     }
 
 
-    async fn print_entry_with_ascii_vertical(&self, entry: &UserEntry) {
+    async fn print_entry_with_ascii_vertical(&self, entry: &UserEntry, width: u32) {
         let title_with_year = if let Some(year) = entry.movie.year {
             format!("{} ({})", entry.movie.title, year)
         } else {
             entry.movie.title.clone()
         };
         
-        // Use optimal poster size for maximum detail (default 60 width for user activity)
-        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(60);
+        // Use optimal poster size with configurable width
+        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(width);
 
         let ascii_art = if let Some(poster_url) = &entry.movie.poster_url {
             // Show loading animation for individual poster
@@ -241,7 +241,7 @@ impl DisplayEngine {
         cleaned
     }
 
-    async fn print_entries_horizontal_grid(&self, entries: &[&UserEntry]) {
+    async fn print_entries_horizontal_grid(&self, entries: &[&UserEntry], width: u32) {
         if entries.is_empty() {
             return;
         }
@@ -252,8 +252,8 @@ impl DisplayEngine {
             80 // fallback width
         };
 
-        // Use optimal poster size for maximum detail (default 60 width for grid display)
-        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(60);
+        // Use optimal poster size with configurable width
+        let (poster_width, _) = AsciiConverter::get_optimal_poster_size(width);
         
         // Calculate spacing: poster + padding + margin
         let column_width = poster_width as usize + 4; // 4 chars for spacing
@@ -267,14 +267,14 @@ impl DisplayEngine {
                 println!();
             }
             
-            self.print_poster_row(chunk).await;
+            self.print_poster_row(chunk, width).await;
             println!(); // spacing between rows
         }
     }
 
-    async fn print_poster_row(&self, entries: &[&UserEntry]) {
-        // Use optimal poster size for maximum detail (default 60 width for poster row)
-        let (poster_width, _poster_height) = AsciiConverter::get_optimal_poster_size(60);
+    async fn print_poster_row(&self, entries: &[&UserEntry], width: u32) {
+        // Use optimal poster size with configurable width
+        let (poster_width, _poster_height) = AsciiConverter::get_optimal_poster_size(width);
         
         // Show loading animation for poster fetching
         if entries.len() > 1 {

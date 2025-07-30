@@ -42,7 +42,7 @@ async fn main() {
     };
 
     match cli.command {
-        Commands::Recent { username, limit, date, rated, reviewed, vertical } => {
+        Commands::Recent { username, limit, date, rated, reviewed, vertical, width } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
                 return;
@@ -79,10 +79,10 @@ async fn main() {
             };
 
             let filtered_profile = filter_entries(profile, date, rated, reviewed);
-            display.show_user_activity(&filtered_profile, limit, vertical).await;
+            display.show_user_activity(&filtered_profile, limit, vertical, width).await;
         },
         
-        Commands::Search { username, title } => {
+        Commands::Search { username, title, width } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
                 return;
@@ -111,7 +111,7 @@ async fn main() {
                                 avatar_url: None,
                                 rss_url: profile.rss_url.clone(),
                                 entries: vec![entry.clone()],
-                            }, None, true).await; // Default to vertical for search results
+                            }, None, true, width).await; // Default to vertical for search results
                         }
                     }
                 },

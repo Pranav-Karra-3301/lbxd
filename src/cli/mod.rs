@@ -26,6 +26,8 @@ pub enum Commands {
         reviewed: bool,
         #[arg(short = 'v', long, help = "Display in vertical layout")]
         vertical: bool,
+        #[arg(long, help = "ASCII art width in characters (30-100)", value_parser = clap::value_parser!(u32).range(30..=100), default_value = "60")]
+        width: u32,
     },
     #[command(about = "◆ Search for specific titles in user history")]
     Search {
@@ -33,6 +35,8 @@ pub enum Commands {
         username: String,
         #[arg(help = "Movie title to search for")]
         title: String,
+        #[arg(long, help = "ASCII art width in characters (30-100)", value_parser = clap::value_parser!(u32).range(30..=100), default_value = "60")]
+        width: u32,
     },
     #[command(about = "▲ Compare multiple users (coming soon)")]
     Compare {

@@ -155,7 +155,7 @@ impl AsciiConverter {
     }
 
     pub fn get_colored_fallback_poster_ascii(width: u32) -> String {
-        let height = (width as f32 * 1.5) as u32; // Proper movie poster ratio
+        let height = (width as f32 * 0.6) as u32; // Proper ASCII aspect ratio
         let mut result = String::new();
         
         // Letterboxd colors: orange (#ff8000), green (#00d735), blue (#40bcf4)
@@ -215,13 +215,13 @@ impl AsciiConverter {
             _ => 90,        // Maximum detail for very large terminals
         };
         
-        let height = (width as f32 * 1.5) as u32; // Movie poster aspect ratio
+        let height = (width as f32 * 0.6) as u32; // ASCII aspect ratio
         (width, height)
     }
     
     pub fn get_optimal_poster_size(width: u32) -> (u32, u32) {
-        // Use provided width with proper movie poster aspect ratio (1.5x height)
-        let height = (width as f32 * 1.5) as u32;
+        // ASCII characters are roughly 2x taller than wide, so use 0.6x height for proper aspect ratio
+        let height = (width as f32 * 0.6) as u32;
         (width, height)
     }
 }
