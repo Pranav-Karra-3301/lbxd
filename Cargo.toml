@@ -1,6 +1,6 @@
 [package]
 name = "lbxd"
-version = "0.1.0"
+version = "1.2.0"
 edition = "2021"
 description = "A beautiful command-line tool for Letterboxd"
 homepage = "https://github.com/Pranav-Karra-3301/lbxd"
@@ -21,6 +21,13 @@ anyhow = "1.0"
 colored = "2.0"
 regex = "1.10"
 dirs = "5.0"
+artem = "3.0"
+image = "0.25"
+tokio-util = "0.7"
+terminal_size = "0.3"
+urlencoding = "2.1"
+scraper = "0.20"
+html5ever = "0.26"
 
 [dev-dependencies]
 tokio-test = "0.4"

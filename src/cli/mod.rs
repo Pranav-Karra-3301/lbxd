@@ -21,8 +21,10 @@ pub enum Commands {
         date: Option<String>,
         #[arg(short, long, help = "Show only rated films")]
         rated: bool,
-        #[arg(short, long, help = "Show only reviewed films")]
+        #[arg(short = 'w', long, help = "Show only reviewed films")]
         reviewed: bool,
+        #[arg(short = 'v', long, help = "Display in vertical layout")]
+        vertical: bool,
     },
     #[command(about = "Search for specific titles")]
     Search {
@@ -52,6 +54,29 @@ pub enum Commands {
         #[arg(short, long, help = "Year for summary")]
         year: Option<i32>,
     },
+    #[command(about = "Search for movies using TMDB")]
+    Movie {
+        #[arg(help = "Movie title to search for")]
+        title: String,
+    },
+    #[command(about = "Manage configuration")]
+    Config {
+        #[command(subcommand)]
+        config_command: ConfigCommands,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigCommands {
+    #[command(about = "Show current saved username")]
+    Whoami,
+    #[command(about = "Set username for 'me' alias")]
+    SetUser {
+        #[arg(help = "Username to save")]
+        username: String,
+    },
+    #[command(about = "Show all configuration settings")]
+    Show,
 }
 
 #[derive(clap::ValueEnum, Clone)]

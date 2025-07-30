@@ -4,6 +4,9 @@ pub mod feed;
 pub mod models;
 pub mod cache;
 pub mod export;
+pub mod config;
+pub mod ascii;
+pub mod tmdb;
 
 pub use cli::*;
 pub use display::*;
@@ -11,3 +14,6 @@ pub use feed::*;
 pub use models::*;
 pub use cache::*;
 pub use export::*;
+pub use config::*;
+pub use ascii::*;
+pub use tmdb::*;
