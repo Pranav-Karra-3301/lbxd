@@ -1,24 +1,28 @@
 use crate::models::{Movie, UserEntry, UserProfile, EntryType};
+use crate::tmdb::TMDBClient;
 use anyhow::{anyhow, Result};
 use feed_rs::parser;
 use regex::Regex;
 use reqwest;
-use scraper::{Html, Selector};
 use std::time::Duration;
 
 pub struct FeedParser {
     client: reqwest::Client,
+    tmdb_client: TMDBClient,
 }
 
 impl FeedParser {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
-            .user_agent("lbxd/1.0.0 (https://github.com/your-repo/lbxd)")
+            .user_agent("lbxd/1.2.1 (https://pranavkarra.me)")
             .build()
             .unwrap_or_default();
             
-        Self { client }
+        Self { 
+            client,
+            tmdb_client: TMDBClient::new(),
+        }
     }
 
     pub async fn fetch_user_feed(&self, username: &str) -> Result<UserProfile> {
@@ -85,8 +89,8 @@ impl FeedParser {
             (title.to_string(), None)
         };
         
-        // Extract poster URL from the movie page
-        let poster_url = self.scrape_poster_url(url).await;
+        // Get poster URL from TMDB instead of scraping Letterboxd
+        let poster_url = self.get_tmdb_poster_url(&movie_title, year).await;
         
         Some(Movie {
             title: movie_title,
@@ -119,77 +123,32 @@ impl FeedParser {
         }
     }
 
-    async fn scrape_poster_url(&self, movie_url: &str) -> Option<String> {
-        // Try to fetch the movie page to extract poster URL
-        let response = self.client
-            .get(movie_url)
-            .header("User-Agent", "lbxd/1.0.0")
-            .send()
-            .await
-            .ok()?;
-            
-        if !response.status().is_success() {
-            return None;
-        }
-        
-        let html_content = response.text().await.ok()?;
-        let document = Html::parse_document(&html_content);
-        
-        // Try multiple selectors for poster images
-        let selectors = [
-            "img.image",  // Main movie poster
-            "img[alt*='poster']",  // Images with 'poster' in alt text
-            ".film-poster img",  // Film poster container
-            "img[src*='image']",  // Generic image selector
-            "meta[property='og:image']",  // Open Graph image
-        ];
-        
-        for selector_str in &selectors {
-            if let Ok(selector) = Selector::parse(selector_str) {
-                for element in document.select(&selector) {
-                    // For img tags
-                    if let Some(src) = element.value().attr("src") {
-                        if self.is_valid_poster_url(src) {
-                            return Some(self.normalize_poster_url(src));
-                        }
-                    }
-                    // For meta tags
-                    if let Some(content) = element.value().attr("content") {
-                        if self.is_valid_poster_url(content) {
-                            return Some(self.normalize_poster_url(content));
-                        }
-                    }
-                }
-            }
-        }
-        
-        None
-    }
-    
-    fn is_valid_poster_url(&self, url: &str) -> bool {
-        // Check if it's a valid poster URL from Letterboxd's CDN
-        (url.contains("ltrbxd.com") || url.contains("letterboxd.com")) &&
-        (url.contains(".jpg") || url.contains(".jpeg") || url.contains(".png") || url.contains(".webp")) &&
-        !url.contains("avatar") && // Exclude user avatars
-        !url.contains("backdrop") // Exclude backdrop images
-    }
-    
-    fn normalize_poster_url(&self, url: &str) -> String {
-        // Ensure we have a full URL
-        if url.starts_with("//") {
-            format!("https:{}", url)
-        } else if url.starts_with("/") {
-            format!("https://letterboxd.com{}", url)
-        } else if !url.starts_with("http") {
-            format!("https://{}", url)
+    async fn get_tmdb_poster_url(&self, title: &str, year: Option<i32>) -> Option<String> {
+        // Create search query with year if available for better accuracy
+        let search_query = if let Some(year) = year {
+            format!("{} {}", title, year)
         } else {
-            // Try to get a higher quality version by modifying the URL
-            let high_quality = url
-                .replace("-0-70-0-105-crop", "-0-230-0-345-crop")  // Larger size
-                .replace("-70-105", "-230-345")  // Alternative format
-                .replace("w92", "w500")  // For TMDB-style URLs
-                .replace("w185", "w500");  // For TMDB-style URLs
-            high_quality
+            title.to_string()
+        };
+        
+        // Search TMDB for the movie
+        match self.tmdb_client.search_movie(&search_query).await {
+            Ok(Some(movie)) => {
+                // Get high-quality poster URL
+                movie.get_high_quality_poster_url()
+            },
+            Ok(None) => {
+                // Try searching without year if first search failed
+                if year.is_some() {
+                    match self.tmdb_client.search_movie(title).await {
+                        Ok(Some(movie)) => movie.get_high_quality_poster_url(),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            },
+            Err(_) => None,
         }
     }
 }

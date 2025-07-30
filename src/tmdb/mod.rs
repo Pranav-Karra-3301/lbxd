@@ -5,7 +5,8 @@ use colored::*;
 
 const TMDB_API_KEY: &str = "bce5788c33b687c14b610654579ff6aa";
 const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
-const TMDB_IMAGE_BASE_URL: &str = "https://image.tmdb.org/t/p/w500";
+const TMDB_IMAGE_BASE_URL: &str = "https://image.tmdb.org/t/p/w780";  // Higher quality images
+const TMDB_IMAGE_ORIGINAL: &str = "https://image.tmdb.org/t/p/original";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TMDBMovie {
@@ -76,5 +77,17 @@ impl TMDBMovie {
         self.poster_path
             .as_ref()
             .map(|path| format!("{}{}", TMDB_IMAGE_BASE_URL, path))
+    }
+    
+    pub fn get_high_quality_poster_url(&self) -> Option<String> {
+        self.poster_path
+            .as_ref()
+            .map(|path| format!("{}{}", TMDB_IMAGE_BASE_URL, path))
+    }
+    
+    pub fn get_original_poster_url(&self) -> Option<String> {
+        self.poster_path
+            .as_ref()
+            .map(|path| format!("{}{}", TMDB_IMAGE_ORIGINAL, path))
     }
 }

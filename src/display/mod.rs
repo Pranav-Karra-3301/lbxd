@@ -109,7 +109,7 @@ impl DisplayEngine {
                 match self.ascii_converter.convert_poster_to_ascii(poster_url, poster_width).await {
                     Ok(art) => art,
                     Err(e) => {
-                        eprintln!("Failed to convert poster for {}: {}", entry.movie.title, e);
+                        eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
                         AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
                     }
                 }
@@ -301,7 +301,8 @@ impl DisplayEngine {
                     match self.ascii_converter.convert_poster_to_ascii(poster_url, poster_width).await {
                         Ok(art) => art,
                         Err(e) => {
-                            eprintln!("Failed to convert poster for {}: {}", entry.movie.title, e);
+                            // More informative error logging for debugging
+                            eprintln!("⚠ Failed to convert poster for '{}': {} (using fallback)", entry.movie.title, e);
                             AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
                         }
                     }
@@ -309,6 +310,8 @@ impl DisplayEngine {
                     AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
                 }
             } else {
+                // No poster URL found, using fallback
+                eprintln!("ℹ No poster URL found for '{}' (using fallback)", entry.movie.title);
                 AsciiConverter::get_colored_fallback_poster_ascii(poster_width)
             };
             ascii_arts.push(ascii_art);
