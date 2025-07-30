@@ -103,7 +103,7 @@ impl AsciiConverter {
             .arg("--num_cols").arg(width.to_string())
             .arg("--scale").arg("1")  // Reduced from default 2 to 1 for better height
             .arg("--background").arg("black")
-            .arg("--mode").arg("blocks");  // Use block characters for vertical compactness
+            .arg("--mode").arg("standard");  // Use standard ASCII characters
         
         if supports_colors {
             cmd.arg("--color_output");
