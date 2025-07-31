@@ -3,12 +3,12 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "lbxd")]
 #[command(about = "A beautiful command-line tool for Letterboxd")]
-#[command(long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Real movie poster display with viu\n◆ Colorful ASCII art mode with Unicode blocks\n▲ TMDB integration for reliable data\n● Dynamic terminal adaptation\n◉ Smooth loading animations\n\nDeveloped by https://pranavkarra.me")]
+#[command(long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Real movie poster display with viu\n◆ Colorful ASCII art mode with Unicode blocks\n▲ TMDB integration for reliable data\n● Dynamic terminal adaptation\n◉ Smooth loading animations\n🎭 Interactive TUI for browsing complete collections\n\nDeveloped by https://pranavkarra.me")]
 #[command(version)]
 pub struct Cli {
     #[arg(long, help = "Reconfigure settings through interactive setup")]
     pub reconfig: bool,
-    #[arg(help = "Show profile stats for username (or use subcommands)")]
+    #[arg(help = "Show profile stats for username (or use 'browse' for interactive TUI)")]
     pub username: Option<String>,
     #[command(subcommand)]
     pub command: Option<Commands>,
@@ -80,6 +80,11 @@ pub enum Commands {
     Config {
         #[command(subcommand)]
         config_command: ConfigCommands,
+    },
+    #[command(about = "🎭 Browse user's complete collection with interactive TUI")]
+    Browse {
+        #[arg(help = "Letterboxd username")]
+        username: String,
     },
 }
 

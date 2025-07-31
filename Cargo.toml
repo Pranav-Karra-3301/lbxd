@@ -1,6 +1,6 @@
 [package]
 name = "lbxd"
-version = "1.5.0"
+version = "2.0.0"
 edition = "2021"
 description = "A beautiful command-line tool for Letterboxd"
 homepage = "https://github.com/Pranav-Karra-3301/lbxd"
@@ -11,7 +11,7 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.0", features = ["full", "sync"] }
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -27,6 +27,8 @@ terminal_size = "0.3"
 urlencoding = "2.1"
 scraper = "0.20"
 html5ever = "0.26"
+ratatui = "0.24"
+crossterm = "0.28"
 
 [dev-dependencies]
 tokio-test = "0.4"

@@ -11,6 +11,7 @@ pub mod viu;
 pub mod batch_loader;
 pub mod onboarding;
 pub mod profile;
+pub mod tui;
 
 pub use cli::*;
 pub use display::*;
@@ -25,3 +26,4 @@ pub use viu::*;
 pub use batch_loader::*;
 pub use onboarding::*;
 pub use profile::*;
+pub use tui::*;

@@ -9,6 +9,7 @@ use lbxd::{
     tmdb::TMDBClient,
     onboarding::OnboardingManager,
     profile::ProfileScraper,
+    tui,
 };
 
 #[tokio::main]
@@ -289,6 +290,19 @@ async fn main() {
                         }
                     }
                 },
+            }
+        },
+
+        Commands::Browse { username } => {
+            let actual_username = resolve_username(&username, &config_manager, &display).await;
+            if actual_username.is_none() {
+                return;
+            }
+            let actual_username = actual_username.unwrap();
+
+            // Launch TUI
+            if let Err(e) = tui::run_tui(&actual_username).await {
+                display.print_error(&format!("TUI failed: {}", e));
             }
         },
     }
