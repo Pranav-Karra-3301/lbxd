@@ -40,8 +40,10 @@ pub async fn run_tui(username: &str) -> Result<()> {
     // Start data loading in background
     let username_clone = username.to_string();
     let scraper_handle = tokio::spawn(async move {
-        let scraper = crate::profile::ProfileScraper::new();
-        scraper.scrape_comprehensive_profile(&username_clone, Some(progress_tx)).await
+        match crate::letterboxd_client::LetterboxdClient::new() {
+            Ok(client) => client.get_comprehensive_profile(&username_clone, Some(progress_tx)).await,
+            Err(e) => Err(e),
+        }
     });
 
     // Run the UI
@@ -78,9 +80,22 @@ async fn run_ui<B: Backend>(
         }
     }
     
+    let omdb_client = crate::omdb::OMDBClient::new();
+    let mut last_search_query = String::new();
+    
     // Now run the UI loop
     loop {
         terminal.draw(|f| app.render(f))?;
+
+        // Handle search functionality
+        if app.should_perform_search() && app.get_search_query() != last_search_query {
+            last_search_query = app.get_search_query().to_string();
+            if !last_search_query.is_empty() {
+                if let Ok(results) = omdb_client.search_movies(&last_search_query, None).await {
+                    app.set_search_results(results);
+                }
+            }
+        }
 
         // Handle events with timeout
         let timeout = tokio::time::Duration::from_millis(100);
@@ -94,7 +109,29 @@ async fn run_ui<B: Backend>(
         if event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
+                    KeyCode::Char('q') => {
+                        if !app.is_in_search_mode() {
+                            break;
+                        }
+                    }
+                    KeyCode::Esc => {
+                        if app.is_in_search_mode() {
+                            app.handle_key(key);
+                        } else {
+                            break;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        if app.is_in_search_mode() {
+                            // Handle movie selection - for now just show details
+                            if let Some(_selected_movie) = app.get_selected_search_result() {
+                                // Future: Show detailed movie view
+                                app.handle_key(crossterm::event::KeyEvent::from(KeyCode::Esc));
+                            }
+                        } else {
+                            app.handle_key(key);
+                        }
+                    }
                     _ => app.handle_key(key),
                 }
             }

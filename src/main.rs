@@ -8,7 +8,7 @@ use lbxd::{
     config::{ConfigManager, ColorMode, DisplayMode},
     tmdb::TMDBClient,
     onboarding::OnboardingManager,
-    profile::ProfileScraper,
+    letterboxd_client::LetterboxdClient,
     tui,
 };
 
@@ -68,15 +68,33 @@ async fn main() {
                 if let Some(actual_username) = actual_username {
                     display.print_minimal_logo();
                     
-                    let profile_scraper = ProfileScraper::new();
-                    display.print_loading_animation("Fetching profile stats...", 1000).await;
-                    
-                    match profile_scraper.scrape_profile(&actual_username).await {
-                        Ok(profile_stats) => {
-                            display.show_profile_stats(&profile_stats).await;
-                        },
+                    match LetterboxdClient::new() {
+                        Ok(client) => {
+                            display.print_loading_animation("Fetching profile stats...", 1000).await;
+                            
+                            match client.get_comprehensive_profile(&actual_username, None).await {
+                                Ok(comprehensive_profile) => {
+                                    // Convert to basic profile stats for display
+                                    let profile_stats = lbxd::profile::ProfileStats {
+                                        name: comprehensive_profile.name,
+                                        username: comprehensive_profile.username,
+                                        avatar_url: None, // No avatar support
+                                        total_films: comprehensive_profile.total_films,
+                                        films_this_year: comprehensive_profile.films_this_year,
+                                        lists_count: comprehensive_profile.lists_count,
+                                        following_count: comprehensive_profile.following_count,
+                                        followers_count: comprehensive_profile.followers_count,
+                                        favorite_films: comprehensive_profile.favorite_films,
+                                    };
+                                    display.show_profile_stats(&profile_stats).await;
+                                },
+                                Err(e) => {
+                                    display.print_error(&format!("Failed to fetch profile stats: {}", e));
+                                }
+                            }
+                        }
                         Err(e) => {
-                            display.print_error(&format!("Failed to fetch profile stats: {}", e));
+                            display.print_error(&format!("Failed to initialize Letterboxd client: {}", e));
                         }
                     }
                 }

@@ -12,6 +12,8 @@ pub mod batch_loader;
 pub mod onboarding;
 pub mod profile;
 pub mod tui;
+pub mod letterboxd_client;
+pub mod omdb;
 
 pub use cli::*;
 pub use display::*;
@@ -27,3 +29,5 @@ pub use batch_loader::*;
 pub use onboarding::*;
 pub use profile::*;
 pub use tui::*;
+pub use letterboxd_client::*;
+pub use omdb::*;

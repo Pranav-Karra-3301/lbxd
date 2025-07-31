@@ -172,25 +172,45 @@ impl MovieGrid {
         let items: Vec<ListItem> = self.movies
             .iter()
             .map(|entry| {
-                let title_year = if let Some(year) = entry.movie.year {
-                    format!("{} ({})", entry.movie.title, year)
+                // Column 1: Title (truncated to fit)
+                let title = if entry.movie.title.len() > 40 {
+                    format!("{}...", &entry.movie.title[..37])
                 } else {
                     entry.movie.title.clone()
                 };
-
-                let rating_str = if let Some(rating) = entry.user_rating {
-                    format!(" ⭐{:.1}", rating)
+                
+                // Column 2: Date watched
+                let watched_date = if let Some(date) = entry.watched_date {
+                    date.format("%Y-%m-%d").to_string()
                 } else {
-                    String::new()
+                    "-".to_string()
+                };
+                
+                // Column 3: Release year
+                let release_year = if let Some(year) = entry.movie.year {
+                    year.to_string()
+                } else {
+                    "-".to_string()
+                };
+                
+                // Column 4: Rating (OMDB data)
+                let imdb_rating = if let Some(rating) = entry.movie.imdb_rating {
+                    format!("IMDb:{:.1}", rating)
+                } else {
+                    "-".to_string()
+                };
+                
+                let rt_rating = if let Some(rating) = entry.movie.rotten_tomatoes_rating {
+                    format!("RT:{}%", rating)
+                } else {
+                    "-".to_string()
                 };
 
-                let date_str = if let Some(date) = entry.watched_date {
-                    format!(" 📅{}", date.format("%Y-%m-%d"))
-                } else {
-                    String::new()
-                };
-
-                let line = format!("{}{}{}", title_year, rating_str, date_str);
+                // Format as columns with consistent spacing
+                let line = format!(
+                    "{:<42} {:<12} {:<6} {:<10} {:<8}",
+                    title, watched_date, release_year, imdb_rating, rt_rating
+                );
                 
                 let style = if let Some(rating) = entry.user_rating {
                     styles.rating_style(rating)
@@ -202,7 +222,16 @@ impl MovieGrid {
             })
             .collect();
 
-        let list = List::new(items)
+        // Add header row
+        let header = format!(
+            "{:<42} {:<12} {:<6} {:<10} {:<8}",
+            "Title", "Watched", "Year", "IMDb", "RT"
+        );
+        
+        let mut all_items = vec![ListItem::new(header).style(styles.header_style())];
+        all_items.extend(items);
+
+        let list = List::new(all_items)
             .block(
                 Block::default()
                     .title(title)
@@ -213,10 +242,54 @@ impl MovieGrid {
             .highlight_style(styles.selected_item_style())
             .highlight_symbol("▶ ");
 
-        f.render_stateful_widget(list, area, &mut self.state);
+        // Adjust state to account for header row
+        let mut adjusted_state = ListState::default();
+        adjusted_state.select(self.state.selected().map(|i| i + 1));
+        
+        f.render_stateful_widget(list, area, &mut adjusted_state);
     }
 
     fn render_movie_details(&self, f: &mut Frame, area: Rect, styles: &AppStyles) {
+        // Split the details area to show poster and details side by side
+        let detail_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(20), // Poster area
+                Constraint::Min(10),    // Details area
+            ])
+            .split(area);
+
+        self.render_movie_poster(f, detail_chunks[0], styles);
+        self.render_movie_info(f, detail_chunks[1], styles);
+    }
+
+    fn render_movie_poster(&self, f: &mut Frame, area: Rect, styles: &AppStyles) {
+        let block = Block::default()
+            .title(" Poster ")
+            .borders(Borders::ALL)
+            .border_style(styles.border_style())
+            .border_type(styles.border_type());
+
+        if let Some(entry) = self.movies.get(self.selected) {
+            // Try to get and display poster using viu
+            let poster_text = self.get_movie_poster_text(&entry.movie.title, entry.movie.year);
+            
+            let paragraph = Paragraph::new(poster_text)
+                .block(block)
+                .wrap(Wrap { trim: true })
+                .style(styles.text_style());
+
+            f.render_widget(paragraph, area);
+        } else {
+            let paragraph = Paragraph::new("No movie selected")
+                .block(block)
+                .style(styles.dim_text_style());
+
+            f.render_widget(paragraph, area);
+        }
+    }
+
+    fn render_movie_info(&self, f: &mut Frame, area: Rect, styles: &AppStyles) {
         let block = Block::default()
             .title(" Details ")
             .borders(Borders::ALL)
@@ -238,6 +311,24 @@ impl MovieGrid {
             // Rating
             if let Some(rating) = entry.user_rating {
                 details.push(format!("Your Rating: ⭐ {:.1}/5", rating));
+            }
+            
+            // Letterboxd Rating
+            if let Some(rating) = entry.movie.letterboxd_rating {
+                details.push(format!("Letterboxd Rating: ⭐ {:.2}/5", rating));
+            }
+
+            // OMDB Ratings
+            if let Some(rating) = entry.movie.imdb_rating {
+                details.push(format!("IMDb Rating: ⭐ {:.1}/10", rating));
+            }
+            
+            if let Some(rating) = entry.movie.rotten_tomatoes_rating {
+                details.push(format!("Rotten Tomatoes: 🍅 {}%", rating));
+            }
+            
+            if let Some(rating) = entry.movie.metacritic_rating {
+                details.push(format!("Metacritic: 📊 {}/100", rating));
             }
 
             // Director
@@ -261,19 +352,31 @@ impl MovieGrid {
                 }
             }
 
+            // Release date
+            if let Some(ref release_date) = entry.movie.release_date {
+                details.push(format!("Released: {}", release_date));
+            }
+
             // Watch date
             if let Some(date) = entry.watched_date {
                 details.push(format!("Watched: {}", date.format("%B %d, %Y")));
             }
 
-            // Liked
-            if entry.liked {
-                details.push("❤️ Liked".to_string());
+            // Plot/Synopsis (prefer OMDB plot over synopsis)
+            let plot_text = entry.movie.plot.as_ref().or(entry.movie.synopsis.as_ref());
+            if let Some(plot) = plot_text {
+                details.push(String::new()); // Empty line
+                details.push("Plot:".to_string());
+                details.push(plot.clone());
             }
 
-            // Rewatched
-            if entry.rewatched {
-                details.push("🔄 Rewatched".to_string());
+            // Awards
+            if let Some(ref awards) = entry.movie.awards {
+                if awards != "N/A" && !awards.is_empty() {
+                    details.push(String::new()); // Empty line
+                    details.push("Awards:".to_string());
+                    details.push(awards.clone());
+                }
             }
 
             // Review
@@ -297,5 +400,12 @@ impl MovieGrid {
 
             f.render_widget(paragraph, area);
         }
+    }
+
+    fn get_movie_poster_text(&self, title: &str, _year: Option<u16>) -> String {
+        // This is a synchronous function, so we can't do async TMDB calls here
+        // For now, show a placeholder. In a real implementation, we'd need to
+        // pre-fetch posters or use a different architecture
+        format!("🎬 Poster for {}\n(TMDB integration needed)", title)
     }
 }
