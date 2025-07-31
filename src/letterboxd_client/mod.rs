@@ -165,7 +165,7 @@ except ImportError:
             return Err(anyhow::anyhow!("Failed to install letterboxdpy: {}", stderr));
         }
 
-        println!("{}", String::from_utf8_lossy(&output.stdout));
+        // Don't print the output to avoid cluttering the loading screen
         Ok(())
     }
 

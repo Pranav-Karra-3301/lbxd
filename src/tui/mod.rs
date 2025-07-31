@@ -28,29 +28,56 @@ async fn load_poster_with_viu(poster_url: &str, width: u32) -> Result<String> {
     use std::process::Stdio;
     use tokio::time::timeout;
     use std::time::Duration;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
     
-    // Download the image and pipe it to viu with timeout
-    let command_future = Command::new("sh")
+    // Generate a unique temporary filename based on URL hash
+    let mut hasher = DefaultHasher::new();
+    poster_url.hash(&mut hasher);
+    let hash = hasher.finish();
+    let temp_filename = format!("/tmp/lbxd_poster_{}.jpg", hash);
+    
+    // Step 1: Download the image to a temporary file
+    let download_command = Command::new("sh")
         .arg("-c")
-        .arg(&format!("timeout 10 curl -s --max-time 5 '{}' | viu -w {} -", poster_url, width))
+        .arg(&format!("timeout 10 curl -s --max-time 5 '{}' -o '{}'", poster_url, temp_filename))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output();
     
-    // Add timeout to prevent hanging
-    let output = timeout(Duration::from_secs(15), command_future).await
-        .map_err(|_| anyhow::anyhow!("Command timed out after 15 seconds"))??;
+    let download_output = timeout(Duration::from_secs(15), download_command).await
+        .map_err(|_| anyhow::anyhow!("Download timed out after 15 seconds"))??;
     
-    if output.status.success() {
-        let ascii_art = String::from_utf8_lossy(&output.stdout).to_string();
+    if !download_output.status.success() {
+        let error = String::from_utf8_lossy(&download_output.stderr);
+        return Err(anyhow::anyhow!("Failed to download image: {}", error));
+    }
+    
+    // Step 2: Use viu to convert the downloaded file to ASCII
+    let viu_command = Command::new("viu")
+        .arg("-w")
+        .arg(width.to_string())
+        .arg(&temp_filename)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output();
+    
+    let viu_output = timeout(Duration::from_secs(10), viu_command).await
+        .map_err(|_| anyhow::anyhow!("viu timed out after 10 seconds"))??;
+    
+    // Step 3: Clean up the temporary file
+    let _ = tokio::fs::remove_file(&temp_filename).await;
+    
+    if viu_output.status.success() {
+        let ascii_art = String::from_utf8_lossy(&viu_output.stdout).to_string();
         if ascii_art.trim().is_empty() {
             Err(anyhow::anyhow!("viu produced empty output"))
         } else {
             Ok(ascii_art)
         }
     } else {
-        let error = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
+        let error = String::from_utf8_lossy(&viu_output.stderr);
+        let stdout = String::from_utf8_lossy(&viu_output.stdout);
         Err(anyhow::anyhow!("viu failed - stderr: {} stdout: {}", error, stdout))
     }
 }
