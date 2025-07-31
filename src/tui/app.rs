@@ -1,12 +1,12 @@
 use crossterm::event::KeyEvent;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
 
 use crate::profile::{ComprehensiveProfile, LoadingProgress};
-use super::{MovieGrid, ProgressBar, AppStyles};
+use super::{MovieGrid, MovieGridAction, ProgressBar, AppStyles};
 
 #[derive(Debug, Clone)]
 pub enum AppState {
@@ -23,11 +23,12 @@ pub struct App {
     pub progress: Option<LoadingProgress>,
     pub movie_grid: MovieGrid,
     pub styles: AppStyles,
-    pub selected_tab: usize, // 0: Movies, 1: Watchlist, 2: Statistics, 3: Analytics, 4: Directors
+    pub selected_tab: usize, // 0: Movies, 1: Watchlist, 2: Statistics
     pub watchlist_grid: MovieGrid,
     pub search_query: String,
     pub search_results: Vec<crate::omdb::OMDBSearchMovie>,
     pub search_selected: usize,
+    pub pending_poster_load: Option<String>, // movie title to load poster for
 }
 
 impl App {
@@ -44,6 +45,7 @@ impl App {
             search_query: String::new(),
             search_results: Vec::new(),
             search_selected: 0,
+            pending_poster_load: None,
         }
     }
 
@@ -99,21 +101,63 @@ impl App {
         matches!(self.state, AppState::Search) && !self.search_query.is_empty()
     }
 
+    fn handle_movie_grid_action(&mut self, action: MovieGridAction) {
+        match action {
+            MovieGridAction::LoadPoster(title) => {
+                self.pending_poster_load = Some(title);
+                // Set loading state on the appropriate grid
+                if self.selected_tab == 0 {
+                    self.movie_grid.set_loading_poster(true);
+                } else if self.selected_tab == 1 {
+                    self.watchlist_grid.set_loading_poster(true);
+                }
+            }
+        }
+    }
+
+    pub fn get_pending_poster_load(&self) -> Option<String> {
+        self.pending_poster_load.clone()
+    }
+
+    pub fn clear_pending_poster_load(&mut self) {
+        self.pending_poster_load = None;
+    }
+
+    pub fn set_poster_result(&mut self, title: String, ascii_art: String) {
+        // Cache the poster in both grids
+        self.movie_grid.set_poster_cache(title.clone(), ascii_art.clone());
+        self.watchlist_grid.set_poster_cache(title, ascii_art);
+    }
+
+
+
+    pub fn get_first_movie_title(&self) -> Option<String> {
+        if let Some(ref profile) = self.profile {
+            if let Some(first_movie) = profile.all_movies.first() {
+                return Some(first_movie.movie.title.clone());
+            }
+        }
+        None
+    }
+
+    pub fn auto_load_first_poster(&mut self, title: String) {
+        self.pending_poster_load = Some(title);
+        self.movie_grid.set_loading_poster(true);
+    }
+
     pub fn handle_key(&mut self, key: KeyEvent) {
         match &self.state {
             AppState::Loaded => {
                 match key.code {
                     crossterm::event::KeyCode::Tab => {
-                        self.selected_tab = (self.selected_tab + 1) % 5;
+                        self.selected_tab = (self.selected_tab + 1) % 3;
                     }
                     crossterm::event::KeyCode::BackTab => {
-                        self.selected_tab = if self.selected_tab == 0 { 4 } else { self.selected_tab - 1 };
+                        self.selected_tab = if self.selected_tab == 0 { 2 } else { self.selected_tab - 1 };
                     }
                     crossterm::event::KeyCode::Char('1') => self.selected_tab = 0,
                     crossterm::event::KeyCode::Char('2') => self.selected_tab = 1,
                     crossterm::event::KeyCode::Char('3') => self.selected_tab = 2,
-                    crossterm::event::KeyCode::Char('4') => self.selected_tab = 3,
-                    crossterm::event::KeyCode::Char('5') => self.selected_tab = 4,
                     crossterm::event::KeyCode::Char('/') => {
                         self.state = AppState::Search;
                         self.search_query.clear();
@@ -122,9 +166,13 @@ impl App {
                     }
                     _ => {
                         if self.selected_tab == 0 {
-                            self.movie_grid.handle_key(key);
+                            if let Some(action) = self.movie_grid.handle_key(key) {
+                                self.handle_movie_grid_action(action);
+                            }
                         } else if self.selected_tab == 1 {
-                            self.watchlist_grid.handle_key(key);
+                            if let Some(action) = self.watchlist_grid.handle_key(key) {
+                                self.handle_movie_grid_action(action);
+                            }
                         }
                     }
                 }
@@ -216,8 +264,6 @@ impl App {
             0 => self.movie_grid.render(f, chunks[2], &self.styles),
             1 => self.watchlist_grid.render(f, chunks[2], &self.styles),
             2 => self.render_statistics(f, chunks[2]),
-            3 => self.render_analytics(f, chunks[2]),
-            4 => self.render_directors(f, chunks[2]),
             _ => {}
         }
         
@@ -243,15 +289,13 @@ impl App {
     }
 
     fn render_tabs(&self, f: &mut Frame, area: Rect) {
-        let tabs = ["🎬 Movies", "📝 Watchlist", "📊 Statistics", "📈 Analytics", "🎭 Directors"];
+        let tabs = ["🎬 Movies", "📝 Watchlist", "📊 Statistics"];
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Ratio(1, 5),
-                Constraint::Ratio(1, 5),
-                Constraint::Ratio(1, 5),
-                Constraint::Ratio(1, 5),
-                Constraint::Ratio(1, 5),
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
             ])
             .split(area);
 
@@ -274,7 +318,7 @@ impl App {
 
 
     fn render_status_bar(&self, f: &mut Frame, area: Rect) {
-        let help_text = "1-5: Switch tabs | Tab/Shift+Tab: Navigate | ↑↓: Browse | s: Sort | /: Search | q/Esc: Quit";
+        let help_text = "1-3: Switch tabs | ↑↓: Browse | s: Sort | p: Load poster | /: Search | q/Esc: Quit";
         let paragraph = Paragraph::new(help_text)
             .style(self.styles.status_bar_style());
         
@@ -361,12 +405,11 @@ impl App {
             let bar = "█".repeat(bar_length) + &"░".repeat(20 - bar_length);
             
             let line = format!(
-                "{}  {} {:.1}% {} {:.1}",
+                "{:<2} {:<15} {:>5.1}% {}",
                 genre.emoji,
                 genre.name,
                 genre.percentage,
-                bar,
-                genre.average_rating
+                bar
             );
             genre_lines.push(line);
         }
@@ -416,149 +459,6 @@ impl App {
         f.render_widget(paragraph, area);
     }
 
-    fn render_analytics(&self, f: &mut Frame, area: Rect) {
-        if let Some(ref profile) = self.profile {
-            if let Some(ref enhanced_stats) = profile.enhanced_stats {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([
-                        Constraint::Length(12), // Yearly breakdown
-                        Constraint::Min(10),    // Viewing patterns
-                    ])
-                    .split(area);
-
-                self.render_yearly_breakdown(f, chunks[0], &enhanced_stats.yearly_breakdown);
-                self.render_viewing_patterns(f, chunks[1], &enhanced_stats.viewing_patterns);
-            } else {
-                let block = Block::default()
-                    .title(" 📈 Analytics ")
-                    .borders(Borders::ALL)
-                    .border_style(self.styles.border_style());
-                
-                let paragraph = Paragraph::new("Loading analytics data...")
-                    .block(block)
-                    .style(self.styles.dim_text_style());
-                
-                f.render_widget(paragraph, area);
-            }
-        }
-    }
-
-    fn render_yearly_breakdown(&self, f: &mut Frame, area: Rect, yearly_data: &[crate::profile::YearlyBreakdown]) {
-        let block = Block::default()
-            .title(" 📅 Yearly Breakdown ")
-            .borders(Borders::ALL)
-            .border_style(self.styles.analytics_header_style())
-            .border_type(self.styles.border_type());
-
-        let mut year_lines = Vec::new();
-        for year_data in yearly_data.iter().take(8) {
-            let runtime_hours = year_data.total_runtime as f32 / 60.0;
-            let line = format!(
-                "{} 🎬 {} films  ⏱️ {:.1}h  ⭐ {:.1}",
-                year_data.year,
-                year_data.film_count,
-                runtime_hours,
-                year_data.average_rating
-            );
-            year_lines.push(line);
-        }
-
-        let paragraph = Paragraph::new(year_lines.join("\n"))
-            .block(block)
-            .style(self.styles.text_style());
-
-        f.render_widget(paragraph, area);
-    }
-
-    fn render_viewing_patterns(&self, f: &mut Frame, area: Rect, patterns: &[crate::profile::ViewingPattern]) {
-        let block = Block::default()
-            .title(" 📊 Monthly Viewing Patterns ")
-            .borders(Borders::ALL)
-            .border_style(self.styles.analytics_header_style())
-            .border_type(self.styles.border_type());
-
-        let month_names = [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-        ];
-
-        let mut pattern_lines = Vec::new();
-        for pattern in patterns {
-            let month_name = month_names.get((pattern.month - 1) as usize).unwrap_or(&"???");
-            let bar_length = ((pattern.films_watched as f32 / 20.0) * 15.0) as usize;
-            let bar = "█".repeat(bar_length.min(15)) + &"░".repeat(15 - bar_length.min(15));
-            
-            let line = format!(
-                "{} {} {} films",
-                month_name,
-                bar,
-                pattern.films_watched
-            );
-            pattern_lines.push(line);
-        }
-
-        let paragraph = Paragraph::new(pattern_lines.join("\n"))
-            .block(block)
-            .style(self.styles.text_style());
-
-        f.render_widget(paragraph, area);
-    }
-
-    fn render_directors(&self, f: &mut Frame, area: Rect) {
-        if let Some(ref profile) = self.profile {
-            if let Some(ref enhanced_stats) = profile.enhanced_stats {
-                let block = Block::default()
-                    .title(" 🎭 Top Directors ")
-                    .borders(Borders::ALL)
-                    .border_style(self.styles.analytics_header_style())
-                    .border_type(self.styles.border_type());
-
-                let mut director_lines = Vec::new();
-                for (i, director) in enhanced_stats.director_stats.iter().take(15).enumerate() {
-                    let rank_emoji = match i {
-                        0 => "🥇",
-                        1 => "🥈", 
-                        2 => "🥉",
-                        _ => "🎬",
-                    };
-
-                    let favorite_info = if let Some(ref fav) = director.favorite_film {
-                        format!(" (Fav: {})", fav)
-                    } else {
-                        String::new()
-                    };
-
-                    let line = format!(
-                        "{} {} {} films ⭐ {:.1}{}",
-                        rank_emoji,
-                        director.name,
-                        director.film_count,
-                        director.average_rating,
-                        favorite_info
-                    );
-                    director_lines.push(line);
-                }
-
-                let paragraph = Paragraph::new(director_lines.join("\n"))
-                    .block(block)
-                    .style(self.styles.text_style());
-
-                f.render_widget(paragraph, area);
-            } else {
-                let block = Block::default()
-                    .title(" 🎭 Directors ")
-                    .borders(Borders::ALL)
-                    .border_style(self.styles.border_style());
-                
-                let paragraph = Paragraph::new("Loading director data...")
-                    .block(block)
-                    .style(self.styles.dim_text_style());
-                
-                f.render_widget(paragraph, area);
-            }
-        }
-    }
 
 
     fn render_search(&self, f: &mut Frame, area: Rect) {

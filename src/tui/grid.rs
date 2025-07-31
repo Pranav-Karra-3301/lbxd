@@ -13,6 +13,8 @@ pub struct MovieGrid {
     state: ListState,
     selected: usize,
     sort_by: SortMode,
+    poster_cache: std::collections::HashMap<String, String>, // title -> ascii art
+    loading_poster: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -21,6 +23,11 @@ pub enum SortMode {
     Rating,
     Title,
     Year,
+}
+
+#[derive(Debug, Clone)]
+pub enum MovieGridAction {
+    LoadPoster(String), // movie title
 }
 
 impl MovieGrid {
@@ -33,6 +40,8 @@ impl MovieGrid {
             state,
             selected: 0,
             sort_by: SortMode::Date,
+            poster_cache: std::collections::HashMap::new(),
+            loading_poster: false,
         }
     }
 
@@ -43,16 +52,44 @@ impl MovieGrid {
         self.state.select(Some(0));
     }
 
-    pub fn handle_key(&mut self, key: KeyEvent) {
+    pub fn handle_key(&mut self, key: KeyEvent) -> Option<MovieGridAction> {
         match key.code {
-            KeyCode::Up | KeyCode::Char('k') => self.previous(),
-            KeyCode::Down | KeyCode::Char('j') => self.next(),
-            KeyCode::PageUp => self.page_up(),
-            KeyCode::PageDown => self.page_down(),
-            KeyCode::Home | KeyCode::Char('g') => self.go_to_top(),
-            KeyCode::End | KeyCode::Char('G') => self.go_to_bottom(),
-            KeyCode::Char('s') => self.cycle_sort(),
-            _ => {}
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.previous();
+                None
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.next();
+                None
+            }
+            KeyCode::PageUp => {
+                self.page_up();
+                None
+            }
+            KeyCode::PageDown => {
+                self.page_down();
+                None
+            }
+            KeyCode::Home | KeyCode::Char('g') => {
+                self.go_to_top();
+                None
+            }
+            KeyCode::End | KeyCode::Char('G') => {
+                self.go_to_bottom();
+                None
+            }
+            KeyCode::Char('s') => {
+                self.cycle_sort();
+                None
+            }
+            KeyCode::Char('p') | KeyCode::Char('P') => {
+                if let Some(movie) = self.movies.get(self.selected) {
+                    Some(MovieGridAction::LoadPoster(movie.movie.title.clone()))
+                } else {
+                    None
+                }
+            }
+            _ => None
         }
     }
 
@@ -132,7 +169,10 @@ impl MovieGrid {
             }
             SortMode::Rating => {
                 movies.sort_by(|a, b| {
-                    b.user_rating.partial_cmp(&a.user_rating).unwrap_or(std::cmp::Ordering::Equal)
+                    // Prioritize letterboxd_rating over user_rating
+                    let a_rating = a.movie.letterboxd_rating.or(a.user_rating);
+                    let b_rating = b.movie.letterboxd_rating.or(b.user_rating);
+                    b_rating.partial_cmp(&a_rating).unwrap_or(std::cmp::Ordering::Equal)
                 });
             }
             SortMode::Title => {
@@ -173,8 +213,8 @@ impl MovieGrid {
             .iter()
             .map(|entry| {
                 // Column 1: Title (truncated to fit)
-                let title = if entry.movie.title.len() > 40 {
-                    format!("{}...", &entry.movie.title[..37])
+                let title = if entry.movie.title.len() > 33 {
+                    format!("{}...", &entry.movie.title[..30])
                 } else {
                     entry.movie.title.clone()
                 };
@@ -193,13 +233,21 @@ impl MovieGrid {
                     "-".to_string()
                 };
                 
-                // Column 4: Rating (OMDB data)
+                // Column 4: Letterboxd Rating
+                let letterboxd_rating = if let Some(rating) = entry.movie.letterboxd_rating {
+                    format!("{:.1}", rating)
+                } else {
+                    "-".to_string()
+                };
+                
+                // Column 5: IMDB Rating
                 let imdb_rating = if let Some(rating) = entry.movie.imdb_rating {
                     format!("IMDb:{:.1}", rating)
                 } else {
                     "-".to_string()
                 };
                 
+                // Column 6: RT Rating
                 let rt_rating = if let Some(rating) = entry.movie.rotten_tomatoes_rating {
                     format!("RT:{}%", rating)
                 } else {
@@ -208,8 +256,8 @@ impl MovieGrid {
 
                 // Format as columns with consistent spacing
                 let line = format!(
-                    "{:<42} {:<12} {:<6} {:<10} {:<8}",
-                    title, watched_date, release_year, imdb_rating, rt_rating
+                    "{:<35} {:<12} {:<6} {:<8} {:<10} {:<8}",
+                    title, watched_date, release_year, letterboxd_rating, imdb_rating, rt_rating
                 );
                 
                 let style = if let Some(rating) = entry.user_rating {
@@ -224,8 +272,8 @@ impl MovieGrid {
 
         // Add header row
         let header = format!(
-            "{:<42} {:<12} {:<6} {:<10} {:<8}",
-            "Title", "Watched", "Year", "IMDb", "RT"
+            "{:<35} {:<12} {:<6} {:<8} {:<10} {:<8}",
+            "Title", "Watched", "Year", "LB", "IMDb", "RT"
         );
         
         let mut all_items = vec![ListItem::new(header).style(styles.header_style())];
@@ -403,9 +451,27 @@ impl MovieGrid {
     }
 
     fn get_movie_poster_text(&self, title: &str, _year: Option<u16>) -> String {
-        // This is a synchronous function, so we can't do async TMDB calls here
-        // For now, show a placeholder. In a real implementation, we'd need to
-        // pre-fetch posters or use a different architecture
-        format!("🎬 Poster for {}\n(TMDB integration needed)", title)
+        // Check cache first
+        if let Some(cached_poster) = self.poster_cache.get(title) {
+            return cached_poster.clone();
+        }
+        
+        // Show loading state if poster is being loaded
+        if self.loading_poster {
+            return format!("🎬 Loading poster for {}...\n\nPress 'P' to load poster\n(viu integration)", title);
+        }
+        
+        // Default placeholder
+        format!("🎬 Poster for {}\n\nPress 'P' to load poster\n(viu integration)", title)
     }
+    
+    pub fn set_poster_cache(&mut self, title: String, ascii_art: String) {
+        self.poster_cache.insert(title, ascii_art);
+        self.loading_poster = false;
+    }
+    
+    pub fn set_loading_poster(&mut self, loading: bool) {
+        self.loading_poster = loading;
+    }
+
 }

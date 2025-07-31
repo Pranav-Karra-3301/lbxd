@@ -72,6 +72,11 @@ pub struct ComprehensiveProfile {
     pub lists: Vec<UserList>,
     pub member_since: Option<String>,
     pub enhanced_stats: Option<EnhancedStatistics>,
+    // Pagination support
+    pub movies_loaded: usize,
+    pub total_movies_available: usize,
+    pub watchlist_loaded: usize,
+    pub total_watchlist_available: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

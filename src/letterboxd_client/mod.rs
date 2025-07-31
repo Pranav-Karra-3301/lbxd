@@ -73,8 +73,17 @@ impl LetterboxdClient {
         // Convert the JSON data to our Rust structures
         let mut comprehensive_profile = self.convert_user_data_to_profile(user_data, username).await?;
         
-        // Add watchlist data
-        comprehensive_profile.watchlist = self.convert_watchlist_to_movies(watchlist_data).await?;
+        // Add watchlist data and update pagination info
+        let watchlist_movies = self.convert_watchlist_to_movies(watchlist_data.clone()).await?;
+        let total_watchlist_available = if let Some(entries_array) = watchlist_data.as_array() {
+            entries_array.len()
+        } else {
+            0
+        };
+        
+        comprehensive_profile.watchlist = watchlist_movies;
+        comprehensive_profile.watchlist_loaded = comprehensive_profile.watchlist.len();
+        comprehensive_profile.total_watchlist_available = total_watchlist_available;
 
         if let Some(ref tx) = progress_tx {
             let _ = tx.send(LoadingProgress {
@@ -105,14 +114,41 @@ impl LetterboxdClient {
         let check_script = r#"
 import sys
 import subprocess
+import time
+
+# LBXD ASCII Art
+lbxd_art = """
+    ██╗     ██████╗ ██╗  ██╗██████╗ 
+    ██║     ██╔══██╗╚██╗██╔╝██╔══██╗
+    ██║     ██████╔╝ ╚███╔╝ ██║  ██║
+    ██║     ██╔══██╗ ██╔██╗ ██║  ██║
+    ███████╗██████╔╝██╔╝ ██╗██████╔╝
+    ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═════╝ 
+"""
+
+animation_messages = [
+    "Loading...",
+    "Parsing...", 
+    "Preparing...",
+    "Cooking...",
+    "Organizing...",
+    "Cleaning...",
+    "Spicing...",
+    "Seasoning...",
+]
+
+def show_loading_animation(message, duration=0.5):
+    print(lbxd_art)
+    print(f"    {message}")
+    time.sleep(duration)
 
 try:
     import letterboxdpy
-    print("letterboxdpy already installed")
+    show_loading_animation("Dependencies ready...")
 except ImportError:
-    print("Installing letterboxdpy...")
+    show_loading_animation("Installing letterboxdpy...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "letterboxdpy"])
-    print("letterboxdpy installed successfully")
+    show_loading_animation("letterboxdpy installed successfully!")
 "#;
 
         let child = Command::new("python3")
@@ -243,8 +279,10 @@ except Exception as e:
         // Extract favorites
         let favorite_films = self.extract_favorites(&user_data["favorites"])?;
 
-        // Get real diary entries from letterboxdpy
-        let all_movies = self.extract_diary_entries(&user_data["diary_entries"])?;
+        // Get real diary entries from letterboxdpy (limit to 10 initially for performance)
+        let all_diary_entries = self.extract_diary_entries(&user_data["diary_entries"])?;
+        let total_movies_available = all_diary_entries.len();
+        let all_movies = all_diary_entries.iter().take(10).cloned().collect::<Vec<_>>();
         let recent_activity = all_movies.iter().take(10).cloned().collect();
 
         // No lists support
@@ -272,6 +310,11 @@ except Exception as e:
             lists,
             member_since: None,
             enhanced_stats: Some(enhanced_stats),
+            // Pagination fields
+            movies_loaded: 10.min(total_movies_available),
+            total_movies_available,
+            watchlist_loaded: 0, // Will be updated when watchlist is loaded
+            total_watchlist_available: 0, // Will be updated when watchlist is loaded
         })
     }
 
@@ -695,8 +738,8 @@ except Exception as e:
         let mut movies = Vec::new();
         
         if let Some(entries_array) = watchlist_data.as_array() {
-            // Limit to first 50 entries for performance
-            for entry in entries_array.iter().take(50) {
+            // Limit to first 10 entries for performance
+            for entry in entries_array.iter().take(10) {
                 let title = entry["title"].as_str().unwrap_or("Unknown").to_string();
                 let slug = entry["slug"].as_str().unwrap_or("");
                 
@@ -773,5 +816,110 @@ except Exception as e:
         }
         
         Ok(profile)
+    }
+
+    pub async fn load_more_movies(&self, username: &str, offset: usize, limit: usize) -> Result<Vec<crate::profile::UserMovieEntry>> {
+        // Get user data again to access all diary entries
+        let user_data = self.get_user_data(username).await?;
+        
+        // Extract all diary entries
+        let all_diary_entries = self.extract_diary_entries(&user_data["diary_entries"])?;
+        
+        // Return the requested slice
+        let end_index = (offset + limit).min(all_diary_entries.len());
+        if offset >= all_diary_entries.len() {
+            return Ok(Vec::new());
+        }
+        
+        let mut batch = all_diary_entries[offset..end_index].to_vec();
+        
+        // Enrich with OMDB data
+        let omdb_client = crate::omdb::OMDBClient::new();
+        for entry in batch.iter_mut() {
+            if let Ok(Some(omdb_movie)) = omdb_client.get_movie_by_title(&entry.movie.title, entry.movie.year).await {
+                entry.movie.imdb_rating = omdb_client.get_imdb_rating(&omdb_movie);
+                entry.movie.rotten_tomatoes_rating = omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
+                entry.movie.metacritic_rating = omdb_client.get_metacritic_rating(&omdb_movie);
+                entry.movie.imdb_id = omdb_movie.imdb_id.clone();
+                entry.movie.release_date = omdb_movie.released.clone();
+                entry.movie.plot = omdb_movie.plot.clone();
+                entry.movie.awards = omdb_movie.awards.clone();
+            }
+            
+            // Small delay to respect rate limits
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+        
+        Ok(batch)
+    }
+
+    pub async fn load_more_watchlist(&self, username: &str, offset: usize, limit: usize) -> Result<Vec<crate::profile::DetailedMovie>> {
+        // Get watchlist data again
+        let watchlist_data = self.get_watchlist_data(username).await?;
+        
+        if let Some(entries_array) = watchlist_data.as_array() {
+            if offset >= entries_array.len() {
+                return Ok(Vec::new());
+            }
+            
+            let mut movies = Vec::new();
+            for entry in entries_array.iter().skip(offset).take(limit) {
+                let title = entry["title"].as_str().unwrap_or("Unknown").to_string();
+                let slug = entry["slug"].as_str().unwrap_or("");
+                
+                let movie = crate::profile::DetailedMovie {
+                    title: title.clone(),
+                    year: None,
+                    director: None,
+                    genres: Vec::new(),
+                    runtime: None,
+                    poster_url: None,
+                    letterboxd_url: format!("https://letterboxd.com/film/{}", slug),
+                    tmdb_url: None,
+                    cast: Vec::new(),
+                    synopsis: None,
+                    letterboxd_rating: None,
+                    // OMDB fields - will be filled below
+                    imdb_rating: None,
+                    rotten_tomatoes_rating: None,
+                    metacritic_rating: None,
+                    imdb_id: None,
+                    release_date: None,
+                    plot: None,
+                    awards: None,
+                };
+                
+                movies.push(movie);
+            }
+            
+            // Enrich with OMDB data
+            let omdb_client = crate::omdb::OMDBClient::new();
+            for movie in movies.iter_mut() {
+                if let Ok(Some(omdb_movie)) = omdb_client.get_movie_by_title(&movie.title, movie.year).await {
+                    movie.year = omdb_movie.year.parse().ok();
+                    movie.director = omdb_movie.director.clone();
+                    movie.runtime = omdb_movie.runtime.as_ref()
+                        .and_then(|r| r.trim_end_matches(" min").parse().ok());
+                    movie.genres = omdb_movie.genre.as_ref()
+                        .map(|g| g.split(", ").map(String::from).collect())
+                        .unwrap_or_default();
+                    movie.imdb_rating = omdb_client.get_imdb_rating(&omdb_movie);
+                    movie.rotten_tomatoes_rating = omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
+                    movie.metacritic_rating = omdb_client.get_metacritic_rating(&omdb_movie);
+                    movie.imdb_id = omdb_movie.imdb_id.clone();
+                    movie.release_date = omdb_movie.released.clone();
+                    movie.plot = omdb_movie.plot.clone();
+                    movie.awards = omdb_movie.awards.clone();
+                    movie.synopsis = omdb_movie.plot.clone();
+                }
+                
+                // Small delay to respect rate limits
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+            
+            Ok(movies)
+        } else {
+            Ok(Vec::new())
+        }
     }
 }
