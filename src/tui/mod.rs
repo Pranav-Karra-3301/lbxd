@@ -31,6 +31,18 @@ async fn load_poster_with_viu(poster_url: &str, width: u32) -> Result<String> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     
+    // Check if required tools are available
+    let curl_check = Command::new("which").arg("curl").output().await;
+    let viu_check = Command::new("which").arg("viu").output().await;
+    
+    if curl_check.is_err() || !curl_check.unwrap().status.success() {
+        return Err(anyhow::anyhow!("curl command not found. Please install curl."));
+    }
+    
+    if viu_check.is_err() || !viu_check.unwrap().status.success() {
+        return Err(anyhow::anyhow!("viu command not found. Please install viu: cargo install viu"));
+    }
+    
     // Generate a unique temporary filename based on URL hash
     let mut hasher = DefaultHasher::new();
     poster_url.hash(&mut hasher);
@@ -38,9 +50,15 @@ async fn load_poster_with_viu(poster_url: &str, width: u32) -> Result<String> {
     let temp_filename = format!("/tmp/lbxd_poster_{}.jpg", hash);
     
     // Step 1: Download the image to a temporary file
-    let download_command = Command::new("sh")
-        .arg("-c")
-        .arg(&format!("timeout 10 curl -s --max-time 5 '{}' -o '{}'", poster_url, temp_filename))
+    let download_command = Command::new("curl")
+        .arg("-s")
+        .arg("--max-time")
+        .arg("10")
+        .arg("--connect-timeout")
+        .arg("5")
+        .arg("-o")
+        .arg(&temp_filename)
+        .arg(poster_url)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output();
@@ -50,7 +68,13 @@ async fn load_poster_with_viu(poster_url: &str, width: u32) -> Result<String> {
     
     if !download_output.status.success() {
         let error = String::from_utf8_lossy(&download_output.stderr);
-        return Err(anyhow::anyhow!("Failed to download image: {}", error));
+        let stdout = String::from_utf8_lossy(&download_output.stdout);
+        return Err(anyhow::anyhow!("Failed to download image from {}\nstderr: {}\nstdout: {}", poster_url, error, stdout));
+    }
+    
+    // Check if the file was actually created
+    if !tokio::fs::metadata(&temp_filename).await.is_ok() {
+        return Err(anyhow::anyhow!("Downloaded file {} does not exist", temp_filename));
     }
     
     // Step 2: Use viu to convert the downloaded file to ASCII
@@ -78,7 +102,7 @@ async fn load_poster_with_viu(poster_url: &str, width: u32) -> Result<String> {
     } else {
         let error = String::from_utf8_lossy(&viu_output.stderr);
         let stdout = String::from_utf8_lossy(&viu_output.stdout);
-        Err(anyhow::anyhow!("viu failed - stderr: {} stdout: {}", error, stdout))
+        Err(anyhow::anyhow!("viu failed on file {}\nstderr: {}\nstdout: {}\nCheck if 'viu' is installed and the image file is valid", temp_filename, error, stdout))
     }
 }
 
