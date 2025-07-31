@@ -100,8 +100,8 @@ async fn main() {
                 }
                 return;
             } else if !cli.reconfig {
-                // No command, no username, and no --reconfig, show help
-                display.print_error("No command provided. Use --help to see available commands or --reconfig to reconfigure settings.");
+                // No command, no username, and no --reconfig, show version info
+                show_version_info();
                 return;
             } else {
                 return;
@@ -193,7 +193,7 @@ async fn main() {
         
         Commands::Compare { usernames: _ } => {
             display.print_minimal_logo();
-            display.print_error("Compare feature coming soon!");
+            display.print_error("Compare feature is under development. Check back soon!");
         },
         
         Commands::Export { username, format, output } => {
@@ -218,7 +218,7 @@ async fn main() {
         
         Commands::Summary { username: _, year: _ } => {
             display.print_minimal_logo();
-            display.print_error("Summary feature coming soon!");
+            display.print_error("Summary feature is under development. Check back soon!");
         },
 
         Commands::Movie { title, ascii, width } => {
@@ -381,4 +381,23 @@ async fn resolve_username(username: &str, config_manager: &ConfigManager, displa
         }
         Some(username.to_string())
     }
+}
+
+fn show_version_info() {
+    let ascii_art = r#"
+    ██╗     ██████╗ ██╗  ██╗██████╗ 
+    ██║     ██╔══██╗╚██╗██╔╝██╔══██╗
+    ██║     ██████╔╝ ╚███╔╝ ██║  ██║
+    ██║     ██╔══██╗ ██╔██╗ ██║  ██║
+    ███████╗██████╔╝██╔╝ ██╗██████╔╝
+    ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═════╝ 
+    "#;
+    
+    println!("{}", ascii_art);
+    println!("    Letterboxd in your terminal");
+    println!();
+    println!("    Version: {}", env!("CARGO_PKG_VERSION"));
+    println!("    Developed by https://pranavkarra.me");
+    println!();
+    println!("    Use --help to see available commands");
 }

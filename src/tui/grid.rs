@@ -458,11 +458,11 @@ impl MovieGrid {
         
         // Show loading state if poster is being loaded
         if self.loading_poster {
-            return format!("🎬 Loading poster for {}...\n\nPress 'P' to load poster\n(viu integration)", title);
+            return format!("🎬 Loading poster for {}...\n\nPress 'P' to load poster\n[Development Mode]", title);
         }
         
         // Default placeholder
-        format!("🎬 Poster for {}\n\nPress 'P' to load poster\n(viu integration)", title)
+        format!("🎬 Poster for {}\n\nPress 'P' to load poster\n[Development Mode]", title)
     }
     
     pub fn set_poster_cache(&mut self, title: String, ascii_art: String) {

@@ -2,8 +2,9 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release](https://img.shields.io/github/v/release/Pranav-Karra-3301/lbxd)](https://github.com/Pranav-Karra-3301/lbxd/releases)
 
-**lbxd** is a beautiful command-line tool written in Rust that lets you view Letterboxd activity directly in your terminal. It fetches any user's public RSS feed and displays their recent movies, ratings, and reviews in clean, expressive ASCII art and stylized text.
+**lbxd** is a beautiful command-line tool written in Rust that brings Letterboxd to your terminal. View any user's activity, browse collections interactively, and explore movie data with rich terminal displays.
 
 ```
     ██╗     ██████╗ ██╗  ██╗██████╗ 
@@ -17,21 +18,31 @@
 
 ## ✨ Features
 
-- 📽️ **Recent Activity**: View a user's recent movies, ratings, and reviews
-- 🔍 **Search**: Find specific titles in a user's activity
-- 📊 **Comparisons**: Compare multiple users' movie preferences *(coming soon)*
-- 📤 **Export**: Export data to JSON or Markdown formats
-- 📈 **Summaries**: Generate viewing summaries and statistics *(coming soon)*
-- 💾 **Caching**: Offline access with intelligent caching
-- 🎨 **Beautiful Display**: Clean ASCII art and colorized terminal output
-- ⚡ **Fast**: Built in Rust for maximum performance
+- 🎭 **Interactive TUI**: Browse complete movie collections with a beautiful terminal interface
+- 📽️ **Recent Activity**: View any user's recent movies, ratings, and reviews
+- 🔍 **Search**: Find specific titles in user activity history
+- 🎬 **Movie Database**: Search TMDB for detailed movie information
+- 📤 **Export**: Export user data to JSON or Markdown formats
+- ⚙️ **Configuration**: Persistent settings and user preferences
+- 💾 **Caching**: Offline access with intelligent data caching
+- 🎨 **Beautiful Display**: Rich terminal output with ASCII art and colors
+- ⚡ **Fast**: Built in Rust for maximum performance and reliability
 
 ## 🚀 Installation
 
 ### Prerequisites
 
-- Rust 1.88.0 or later
-- A terminal that supports UTF-8 and ANSI colors
+- **Rust**: Version 1.88.0 or later
+- **Python 3**: For Letterboxd data integration
+- **Terminal**: UTF-8 and ANSI color support recommended
+
+### Homebrew (Recommended)
+
+```bash
+# macOS and Linux
+brew tap pranav-karra-3301/lbxd
+brew install lbxd
+```
 
 ### From Source
 
@@ -42,30 +53,42 @@ cd lbxd
 
 # Build and install
 cargo install --path .
+
+# Install Python dependencies
+pip3 install letterboxdpy
 ```
 
-### Package Managers *(coming soon)*
+### Dependencies
 
-```bash
-# Homebrew (macOS/Linux)
-brew install lbxd
-
-# Chocolatey (Windows)
-choco install lbxd
-
-# Winget (Windows)
-winget install lbxd
-
-# APT (Ubuntu/Debian)
-sudo apt install lbxd
-```
+lbxd requires these system dependencies:
+- **Python 3** with `letterboxdpy` package
+- **curl** for network requests
+- **A modern terminal** with Unicode support
 
 ## 📖 Usage
 
-### Show Recent Activity
+### Quick Start
 
-Display a user's recent Letterboxd activity:
+```bash
+# Show version and help
+lbxd
 
+# Browse a user's collection interactively
+lbxd browse username
+
+# Show profile stats  
+lbxd username
+```
+
+### Commands
+
+#### Interactive Browsing
+```bash
+# Launch interactive TUI for browsing complete collections
+lbxd browse username
+```
+
+#### Recent Activity
 ```bash
 # Show recent activity for a user
 lbxd recent username
@@ -76,26 +99,23 @@ lbxd recent username --limit 10
 # Show only rated films
 lbxd recent username --rated
 
-# Show only reviewed films
+# Show only reviewed films  
 lbxd recent username --reviewed
 
 # Filter by specific date
 lbxd recent username --date 2024-01-15
 ```
 
-### Search for Movies
-
-Find specific titles in a user's activity:
-
+#### Search
 ```bash
-# Search for movies containing "blade runner"
+# Search for movies in user's activity
 lbxd search username "blade runner"
+
+# Search TMDB movie database
+lbxd movie "dune 2021"
 ```
 
-### Export Data
-
-Export user data to various formats:
-
+#### Data Export
 ```bash
 # Export to JSON
 lbxd export username --format json --output data.json
@@ -104,22 +124,16 @@ lbxd export username --format json --output data.json
 lbxd export username --format markdown --output report.md
 ```
 
-### Compare Users *(coming soon)*
-
-Compare multiple users' movie preferences:
-
+#### Configuration
 ```bash
-# Compare two or more users
-lbxd compare user1 user2 user3
-```
+# Show current settings
+lbxd config show
 
-### Generate Summaries *(coming soon)*
+# Set default username
+lbxd config set-user myusername
 
-Create viewing summaries and statistics:
-
-```bash
-# Generate summary for 2024
-lbxd summary username --year 2024
+# Check saved username
+lbxd config whoami
 ```
 
 ## 🎨 Output Examples
@@ -157,6 +171,9 @@ lbxd automatically creates a cache directory at `~/.cache/lbxd/` to store user d
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
+# Install dependencies
+pip3 install letterboxdpy
+
 # Run tests
 cargo test
 
@@ -171,14 +188,19 @@ RUST_LOG=debug cargo run -- recent username
 
 ```
 src/
-├── main.rs           # CLI entry point
-├── lib.rs            # Library root
-├── cli/              # Command-line interface
-├── display/          # Terminal output and styling
-├── feed/             # RSS feed parsing
-├── models/           # Data structures
-├── cache/            # Caching system
-└── export/           # Data export functionality
+├── main.rs              # CLI entry point and version display
+├── lib.rs               # Library root
+├── cli/                 # Command-line interface definitions
+├── tui/                 # Interactive terminal user interface
+├── display/             # Terminal output and styling
+├── letterboxd_client/   # Letterboxd data integration
+├── tmdb/                # The Movie Database API client
+├── omdb/                # Open Movie Database integration
+├── feed/                # RSS feed parsing
+├── models/              # Data structures and types
+├── cache/               # Intelligent caching system
+├── config/              # Configuration management
+└── export/              # Data export functionality
 ```
 
 ## 🤝 Contributing
@@ -197,9 +219,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [Letterboxd](https://letterboxd.com/) for providing RSS feeds
-- The Rust community for excellent crates and tools
-- All contributors who help improve this project
+- [Letterboxd](https://letterboxd.com/) for providing RSS feeds and public data
+- [The Movie Database (TMDB)](https://www.themoviedb.org/) for comprehensive movie information
+- [Open Movie Database (OMDB)](http://www.omdbapi.com/) for additional movie metadata
+- The Rust community for excellent crates and development tools
+- [letterboxdpy](https://github.com/nmcassa/letterboxdpy) for Python integration capabilities
 
 ## 📞 Support
 

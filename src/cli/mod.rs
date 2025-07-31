@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "lbxd")]
 #[command(about = "A beautiful command-line tool for Letterboxd")]
-#[command(long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Real movie poster display with viu\n◆ Colorful ASCII art mode with Unicode blocks\n▲ TMDB integration for reliable data\n● Dynamic terminal adaptation\n◉ Smooth loading animations\n🎭 Interactive TUI for browsing complete collections\n\nDeveloped by https://pranavkarra.me")]
+#[command(long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Recent activity viewing with rich display\n◆ Movie search and filtering capabilities\n▲ TMDB integration for reliable data\n● Export functionality for data analysis\n◉ Smooth loading animations\n🎭 Interactive TUI for browsing complete collections\n\nDeveloped by https://pranavkarra.me")]
 #[command(version)]
 pub struct Cli {
     #[arg(long, help = "Reconfigure settings through interactive setup")]
@@ -30,7 +30,7 @@ pub enum Commands {
         reviewed: bool,
         #[arg(short = 'v', long, help = "Display in vertical layout")]
         vertical: bool,
-        #[arg(long, help = "Use ASCII art instead of viu (terminal image viewer)")]
+        #[arg(long, help = "Use ASCII art mode for poster display")]
         ascii: bool,
         #[arg(long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
@@ -41,12 +41,12 @@ pub enum Commands {
         username: String,
         #[arg(help = "Movie title to search for")]
         title: String,
-        #[arg(long, help = "Use ASCII art instead of viu (terminal image viewer)")]
+        #[arg(long, help = "Use ASCII art mode for poster display")]
         ascii: bool,
         #[arg(long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
     },
-    #[command(about = "▲ Compare multiple users (coming soon)")]
+    #[command(about = "▲ Compare multiple users")]
     Compare {
         #[arg(help = "Letterboxd usernames", num_args = 2..)]
         usernames: Vec<String>,
@@ -60,7 +60,7 @@ pub enum Commands {
         #[arg(short, long, help = "Output file path")]
         output: String,
     },
-    #[command(about = "◉ Generate viewing summary (coming soon)")]
+    #[command(about = "◉ Generate viewing summary")]
     Summary {
         #[arg(help = "Letterboxd username")]
         username: String,
@@ -71,7 +71,7 @@ pub enum Commands {
     Movie {
         #[arg(help = "Movie title to search for")]
         title: String,
-        #[arg(long, help = "Use ASCII art instead of viu (terminal image viewer)")]
+        #[arg(long, help = "Use ASCII art mode for poster display")]
         ascii: bool,
         #[arg(short, long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,

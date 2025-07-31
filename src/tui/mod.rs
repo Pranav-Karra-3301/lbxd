@@ -23,88 +23,6 @@ pub use progress::*;
 
 use crate::profile::{ComprehensiveProfile, LoadingProgress};
 
-async fn load_poster_with_viu(poster_url: &str, width: u32) -> Result<String> {
-    use tokio::process::Command;
-    use std::process::Stdio;
-    use tokio::time::timeout;
-    use std::time::Duration;
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-    
-    // Check if required tools are available
-    let curl_check = Command::new("which").arg("curl").output().await;
-    let viu_check = Command::new("which").arg("viu").output().await;
-    
-    if curl_check.is_err() || !curl_check.unwrap().status.success() {
-        return Err(anyhow::anyhow!("curl command not found. Please install curl."));
-    }
-    
-    if viu_check.is_err() || !viu_check.unwrap().status.success() {
-        return Err(anyhow::anyhow!("viu command not found. Please install viu: cargo install viu"));
-    }
-    
-    // Generate a unique temporary filename based on URL hash
-    let mut hasher = DefaultHasher::new();
-    poster_url.hash(&mut hasher);
-    let hash = hasher.finish();
-    let temp_filename = format!("/tmp/lbxd_poster_{}.jpg", hash);
-    
-    // Step 1: Download the image to a temporary file
-    let download_command = Command::new("curl")
-        .arg("-s")
-        .arg("--max-time")
-        .arg("10")
-        .arg("--connect-timeout")
-        .arg("5")
-        .arg("-o")
-        .arg(&temp_filename)
-        .arg(poster_url)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output();
-    
-    let download_output = timeout(Duration::from_secs(15), download_command).await
-        .map_err(|_| anyhow::anyhow!("Download timed out after 15 seconds"))??;
-    
-    if !download_output.status.success() {
-        let error = String::from_utf8_lossy(&download_output.stderr);
-        let stdout = String::from_utf8_lossy(&download_output.stdout);
-        return Err(anyhow::anyhow!("Failed to download image from {}\nstderr: {}\nstdout: {}", poster_url, error, stdout));
-    }
-    
-    // Check if the file was actually created
-    if !tokio::fs::metadata(&temp_filename).await.is_ok() {
-        return Err(anyhow::anyhow!("Downloaded file {} does not exist", temp_filename));
-    }
-    
-    // Step 2: Use viu to convert the downloaded file to ASCII
-    let viu_command = Command::new("viu")
-        .arg("-w")
-        .arg(width.to_string())
-        .arg(&temp_filename)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output();
-    
-    let viu_output = timeout(Duration::from_secs(10), viu_command).await
-        .map_err(|_| anyhow::anyhow!("viu timed out after 10 seconds"))??;
-    
-    // Step 3: Clean up the temporary file
-    let _ = tokio::fs::remove_file(&temp_filename).await;
-    
-    if viu_output.status.success() {
-        let ascii_art = String::from_utf8_lossy(&viu_output.stdout).to_string();
-        if ascii_art.trim().is_empty() {
-            Err(anyhow::anyhow!("viu produced empty output"))
-        } else {
-            Ok(ascii_art)
-        }
-    } else {
-        let error = String::from_utf8_lossy(&viu_output.stderr);
-        let stdout = String::from_utf8_lossy(&viu_output.stdout);
-        Err(anyhow::anyhow!("viu failed on file {}\nstderr: {}\nstdout: {}\nCheck if 'viu' is installed and the image file is valid", temp_filename, error, stdout))
-    }
-}
 
 pub async fn run_tui(username: &str) -> Result<()> {
     // Setup terminal
@@ -220,37 +138,28 @@ async fn run_ui<B: Backend>(
     loop {
         terminal.draw(|f| app.render(f))?;
 
-        // Handle poster loading
+        // Handle poster loading (simplified for development)
         if let Some(title) = app.get_pending_poster_load() {
             app.clear_pending_poster_load();
             
-            // Try to get movie details from TMDB and load poster with viu
+            // Try to get movie details from TMDB and show poster URL
             let title_clone = title.clone();
             if let Ok(Some(movie)) = tmdb_client.search_movie(&title_clone).await {
                 if let Some(ref poster_path) = movie.poster_path {
                     let poster_url = tmdb_client.get_poster_url(poster_path);
-                    // Use viu to convert poster to ASCII
-                    let ascii_result = load_poster_with_viu(&poster_url, 30).await;
-                    match ascii_result {
-                        Ok(ascii_art) => {
-                            if ascii_art.trim().is_empty() {
-                                let fallback = format!("🎬 Empty poster for {}\n\nviu returned empty output\nURL: {}", title, poster_url);
-                                app.set_poster_result(title, fallback);
-                            } else {
-                                app.set_poster_result(title, ascii_art);
-                            }
-                        }
-                        Err(e) => {
-                            let fallback = format!("🎬 Failed to load poster for {}\n\nError: {}\nURL: {}\n\nCheck if 'viu' and 'curl' are installed", title, e, poster_url);
-                            app.set_poster_result(title, fallback);
-                        }
-                    }
+                    let dev_info = format!("🎬 Poster for {}\n\n[Development Mode]\nPoster URL:\n{}\n\nTMDB ID: {}\nRelease: {}", 
+                        title, 
+                        poster_url,
+                        movie.id,
+                        movie.release_date.as_deref().unwrap_or("Unknown")
+                    );
+                    app.set_poster_result(title, dev_info);
                 } else {
-                    let fallback = format!("🎬 No poster found for {}\n\nNo poster available", title);
+                    let fallback = format!("🎬 No poster found for {}\n\n[Development Mode]\nNo poster available on TMDB", title);
                     app.set_poster_result(title, fallback);
                 }
             } else {
-                let fallback = format!("🎬 Movie not found: {}\n\nTMDB search failed", title);
+                let fallback = format!("🎬 Movie not found: {}\n\n[Development Mode]\nTMDB search failed", title);
                 app.set_poster_result(title, fallback);
             }
         }
