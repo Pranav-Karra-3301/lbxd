@@ -8,6 +8,7 @@ use lbxd::{
     config::{ConfigManager, ColorMode, DisplayMode},
     tmdb::TMDBClient,
     onboarding::OnboardingManager,
+    profile::ProfileScraper,
 };
 
 #[tokio::main]
@@ -56,16 +57,43 @@ async fn main() {
         }
     };
 
-    // Handle case where no command is provided
+    // Handle case where no command is provided but username is given (profile stats)
     let command = match cli.command {
-        Some(cmd) => cmd,
+        Some(cmd) => Some(cmd),
         None => {
-            if !cli.reconfig {
-                // No command and no --reconfig, show help
+            if let Some(username) = cli.username {
+                // Show profile stats for the given username
+                let actual_username = resolve_username(&username, &config_manager, &display).await;
+                if let Some(actual_username) = actual_username {
+                    display.print_minimal_logo();
+                    
+                    let profile_scraper = ProfileScraper::new();
+                    display.print_loading_animation("Fetching profile stats...", 1000).await;
+                    
+                    match profile_scraper.scrape_profile(&actual_username).await {
+                        Ok(profile_stats) => {
+                            display.show_profile_stats(&profile_stats).await;
+                        },
+                        Err(e) => {
+                            display.print_error(&format!("Failed to fetch profile stats: {}", e));
+                        }
+                    }
+                }
+                return;
+            } else if !cli.reconfig {
+                // No command, no username, and no --reconfig, show help
                 display.print_error("No command provided. Use --help to see available commands or --reconfig to reconfigure settings.");
+                return;
+            } else {
+                return;
             }
-            return;
         }
+    };
+
+    // Handle subcommands
+    let command = match command {
+        Some(cmd) => cmd,
+        None => return,
     };
 
     match command {

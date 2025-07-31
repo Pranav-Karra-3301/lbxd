@@ -8,6 +8,8 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[arg(long, help = "Reconfigure settings through interactive setup")]
     pub reconfig: bool,
+    #[arg(help = "Show profile stats for username (or use subcommands)")]
+    pub username: Option<String>,
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

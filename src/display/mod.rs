@@ -4,6 +4,7 @@ use crate::tmdb::{TMDBMovie, TMDBClient};
 use crate::viu::ViuViewer;
 use crate::batch_loader::BatchLoader;
 use crate::config::{ConfigManager, DisplayMode, ColorMode};
+use crate::profile::ProfileStats;
 use colored::*;
 use std::time::Duration;
 use tokio::time::interval;
@@ -728,5 +729,90 @@ impl DisplayEngine {
         println!("{}", "═".repeat(60));
         println!("{}", self.apply_ansi_color(art, "bright_yellow"));
         println!("{}", "═".repeat(60));
+    }
+
+    pub async fn show_profile_stats(&self, profile: &ProfileStats) {
+        // Header with profile name
+        println!("\n{}", self.apply_style_with_ansi_color(&profile.name, "bold", "bright_white"));
+        println!("{}", self.apply_ansi_color(&format!("@{}", profile.username), "bright_cyan"));
+        
+        // Display avatar if available
+        if let Some(ref avatar_url) = profile.avatar_url {
+            println!();
+            if ViuViewer::is_available() {
+                self.print_loading_animation("Loading avatar...", 300).await;
+                let use_pixelated = self.get_display_mode();
+                match self.viu_viewer.display_image_url(avatar_url, 30, use_pixelated).await {
+                    Ok(_) => {},
+                    Err(_) => {
+                        self.print_warning("Could not display avatar");
+                    }
+                }
+            }
+        }
+        
+        // Stats section
+        println!("\n{}", self.apply_style_with_ansi_color("Profile Stats", "bold", "bright_yellow"));
+        println!("{}", "─".repeat(40));
+        
+        // Display stats in a grid layout
+        println!("{:<20} {}", 
+            self.apply_ansi_color("Total Films:", "bright_green"), 
+            self.apply_style_with_ansi_color(&profile.total_films.to_string(), "bold", "white"));
+        println!("{:<20} {}", 
+            self.apply_ansi_color("Films This Year:", "bright_blue"), 
+            self.apply_style_with_ansi_color(&profile.films_this_year.to_string(), "bold", "white"));
+        println!("{:<20} {}", 
+            self.apply_ansi_color("Lists:", "bright_magenta"), 
+            self.apply_style_with_ansi_color(&profile.lists_count.to_string(), "bold", "white"));
+        println!("{:<20} {}", 
+            self.apply_ansi_color("Following:", "bright_cyan"), 
+            self.apply_style_with_ansi_color(&profile.following_count.to_string(), "bold", "white"));
+        println!("{:<20} {}", 
+            self.apply_ansi_color("Followers:", "bright_yellow"), 
+            self.apply_style_with_ansi_color(&profile.followers_count.to_string(), "bold", "white"));
+        
+        // Favorite films section
+        if !profile.favorite_films.is_empty() {
+            println!("\n{}", self.apply_style_with_ansi_color("Favorite Films", "bold", "bright_yellow"));
+            println!("{}", "─".repeat(40));
+            
+            self.display_favorite_films(&profile.favorite_films).await;
+        }
+        
+        println!();
+    }
+
+    async fn display_favorite_films(&self, favorites: &[crate::profile::FavoriteFilm]) {
+        for (i, film) in favorites.iter().enumerate() {
+            if i > 0 {
+                println!(); // Add spacing between films
+            }
+            
+            // Display film title and year
+            let title_display = if let Some(year) = film.year {
+                format!("{} ({})", film.title, year)
+            } else {
+                film.title.clone()
+            };
+            
+            println!("{}", self.apply_style_with_ansi_color(&title_display, "bold", "bright_white"));
+            
+            // Display poster if available
+            if let Some(ref poster_url) = film.poster_url {
+                if ViuViewer::is_available() {
+                    self.print_loading_animation(&format!("Loading poster {}...", i + 1), 200).await;
+                    let use_pixelated = self.get_display_mode();
+                    match self.viu_viewer.display_image_url(poster_url, 30, use_pixelated).await {
+                        Ok(_) => {},
+                        Err(_) => {
+                            println!("{}", self.apply_ansi_color("  [Poster unavailable]", "dimmed"));
+                        }
+                    }
+                } else {
+                    println!("{}", self.apply_ansi_color("  [Install viu to see poster]", "dimmed"));
+                }
+            }
+        }
     }
 }
