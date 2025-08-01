@@ -234,4 +234,3 @@ If you encounter any issues or have questions:
 
 - 🐛 [Report bugs](https://github.com/Pranav-Karra-3301/lbxd/issues)
 - 💡 [Request features](https://github.com/Pranav-Karra-3301/lbxd/issues)
-- 📖 [Read the documentation](https://github.com/Pranav-Karra-3301/lbxd/wiki)
