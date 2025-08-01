@@ -8,15 +8,6 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
-    rust: "1.70"
-  jobs:
-    pre_build:
-      # Install Rust dependencies and generate docs
-      - cargo doc --no-deps --document-private-items
-    post_build:
-      # Copy Rust docs to build directory
-      - mkdir -p $READTHEDOCS_OUTPUT/html/api
-      - cp -r target/doc/* $READTHEDOCS_OUTPUT/html/api/ || true
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
