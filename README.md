@@ -1,7 +1,7 @@
 <p align="center">
   <img src="lbxd.png" alt="lbxd" width="200"/>
 </p>
-# lbxd 
+
 
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
