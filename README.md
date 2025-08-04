@@ -44,6 +44,8 @@ curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.
 irm https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.ps1 | iex
 ```
 
+> 📖 **For detailed installation instructions across all platforms and package managers, see [INSTALLATION.md](INSTALLATION.md)**
+
 ### Package Managers
 
 **Homebrew (macOS/Linux):**
