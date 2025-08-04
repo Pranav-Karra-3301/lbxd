@@ -36,6 +36,8 @@ brew tap pranav-karra-3301/lbxd
 brew install lbxd
 ```
 
+*Formula maintained at: [homebrew-lbxd](https://github.com/Pranav-Karra-3301/homebrew-lbxd)*
+
 Or build from source:
 
 ```bash

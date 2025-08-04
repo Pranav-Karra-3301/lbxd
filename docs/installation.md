@@ -47,6 +47,8 @@ brew tap pranav-karra-3301/lbxd
 brew install lbxd
 ```
 
+**Note**: The Homebrew formula is maintained in a separate repository: [homebrew-lbxd](https://github.com/Pranav-Karra-3301/homebrew-lbxd)
+
 ### Chocolatey (Windows)
 
 ```powershell
@@ -106,17 +108,65 @@ chmod +x /usr/local/bin/lbxd
 
 ### Build from Source
 
+**Prerequisites:**
+- Rust 1.88.0 or later ([install here](https://rustup.rs/))
+- Python 3.8+ with pip
+- Git
+
+**Basic build:**
 ```bash
 # Clone the repository
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Run the installation script
-./install.sh
+# Install Python dependencies
+pip3 install letterboxdpy
 
-# Or build manually
+# Install viu for enhanced image display (optional)
+cargo install viu
+
+# Build and install lbxd
 cargo build --release
 cargo install --path .
+
+# Verify installation
+lbxd --version
+```
+
+**Development build:**
+```bash
+# Clone and enter directory
+git clone https://github.com/Pranav-Karra-3301/lbxd.git
+cd lbxd
+
+# Install dependencies
+pip3 install letterboxdpy
+
+# Run in development mode
+cargo run -- --help
+
+# Run tests
+cargo test
+
+# Build optimized release
+cargo build --release
+
+# The binary will be at: target/release/lbxd
+```
+
+**Cross-compilation (advanced):**
+```bash
+# Install target for cross-compilation
+rustup target add x86_64-unknown-linux-gnu
+
+# Build for specific target
+cargo build --release --target x86_64-unknown-linux-gnu
+
+# Available targets:
+# - x86_64-unknown-linux-gnu (Linux x64)
+# - x86_64-apple-darwin (macOS Intel)
+# - aarch64-apple-darwin (macOS Apple Silicon)
+# - x86_64-pc-windows-msvc (Windows x64)
 ```
 
 ## Dependencies
@@ -216,6 +266,8 @@ curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.
 # Install lbxd via Homebrew (recommended)
 brew tap pranav-karra-3301/lbxd
 brew install lbxd
+
+# Formula maintained at: https://github.com/Pranav-Karra-3301/homebrew-lbxd
 
 # Or use the install script
 curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.sh | bash
