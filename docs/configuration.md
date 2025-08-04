@@ -49,8 +49,11 @@ max_size = 100
 
 ```toml
 [api]
-# TMDB API key (optional, for enhanced movie data)
+# TMDB API key (optional, uses built-in default if not provided)
 tmdb_key = ""
+
+# OMDB API key (optional, uses built-in default if not provided)  
+omdb_key = ""
 
 # Request timeout in seconds
 timeout = 30
@@ -99,8 +102,48 @@ You can override configuration values using environment variables:
 
 - `LBXD_CONFIG_FILE`: Path to custom configuration file
 - `LBXD_CACHE_DIR`: Custom cache directory
-- `LBXD_TMDB_KEY`: TMDB API key
+- `TMDB_API_KEY`: TMDB API key (overrides default)
+- `OMDB_API_KEY`: OMDB API key (overrides default) 
 - `LBXD_LOG_LEVEL`: Logging level (error, warn, info, debug, trace)
+
+### API Key Configuration
+
+lbxd comes with default API keys for TMDB and OMDB services, so it works out of the box. However, you can use your own API keys if needed:
+
+**For TMDB:**
+```bash
+export TMDB_API_KEY="your_tmdb_api_key_here"
+```
+
+**For OMDB:**
+```bash
+export OMDB_API_KEY="your_omdb_api_key_here"
+```
+
+**To make environment variables persistent, add them to your shell profile:**
+
+For bash (`~/.bashrc` or `~/.bash_profile`):
+```bash
+# lbxd API configuration
+export TMDB_API_KEY="your_tmdb_api_key_here"
+export OMDB_API_KEY="your_omdb_api_key_here"
+```
+
+For zsh (`~/.zshrc`):
+```bash
+# lbxd API configuration  
+export TMDB_API_KEY="your_tmdb_api_key_here"
+export OMDB_API_KEY="your_omdb_api_key_here"
+```
+
+For fish (`~/.config/fish/config.fish`):
+```fish
+# lbxd API configuration
+set -gx TMDB_API_KEY "your_tmdb_api_key_here"
+set -gx OMDB_API_KEY "your_omdb_api_key_here"
+```
+
+After adding to your shell profile, restart your terminal or run `source ~/.bashrc` (or equivalent).
 
 ## Managing Configuration
 
@@ -132,7 +175,10 @@ lbxd config set display.page_size 50
 lbxd config set cache.enabled true
 
 # Set TMDB API key
-lbxd config set api.tmdb_key "your_api_key_here"
+lbxd config set api.tmdb_key "your_tmdb_api_key_here"
+
+# Set OMDB API key  
+lbxd config set api.omdb_key "your_omdb_api_key_here"
 ```
 
 ### Reset Configuration
@@ -162,6 +208,7 @@ max_size = 200
 
 [api]
 tmdb_key = "your_tmdb_api_key"
+omdb_key = "your_omdb_api_key"
 timeout = 45
 max_concurrent = 3
 rate_limit = 1

@@ -1,14 +1,16 @@
 # lbxd Documentation
 
-Welcome to the documentation for **lbxd** - a beautiful command-line tool that brings Letterboxd to your terminal.
+Welcome to the lbxd documentation! This guide covers installation, usage, configuration, and API reference for the Letterboxd command-line tool.
 
 ```{toctree}
 :maxdepth: 2
-:caption: Contents:
+:caption: "Contents:"
 
 installation
 usage
 configuration
+api-keys
+migration
 api/index
 ```
 
@@ -33,6 +35,8 @@ Install lbxd using Homebrew:
 brew tap pranav-karra-3301/lbxd
 brew install lbxd
 ```
+
+*Formula maintained at: [homebrew-lbxd](https://github.com/Pranav-Karra-3301/homebrew-lbxd)*
 
 Or build from source:
 

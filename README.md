@@ -33,40 +33,104 @@
 
 ## 🚀 Installation
 
-### Prerequisites
+### Quick Install (Recommended)
 
-- **Rust**: Version 1.88.0 or later
-- **Python 3**: For Letterboxd data integration
-- **Terminal**: UTF-8 and ANSI color support recommended
-
-### Homebrew (Recommended)
-
+**One-line installation:**
 ```bash
-# macOS and Linux
+# Unix/Linux/macOS
+curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.ps1 | iex
+```
+
+### Package Managers
+
+**Homebrew (macOS/Linux):**
+```bash
 brew tap pranav-karra-3301/lbxd
 brew install lbxd
 ```
+*Formula maintained at: [homebrew-lbxd](https://github.com/Pranav-Karra-3301/homebrew-lbxd)*
 
-### From Source
+**Chocolatey (Windows):**
+```powershell
+choco install lbxd
+```
 
+**Winget (Windows):**
+```powershell
+winget install Pranav-Karra-3301.lbxd
+```
+
+### Building from Source
+
+**Prerequisites:**
+- Rust 1.88.0 or later
+- Python 3.8+ with pip
+- Git
+
+**Build steps:**
 ```bash
 # Clone the repository
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Build and install
-cargo install --path .
-
 # Install Python dependencies
 pip3 install letterboxdpy
+
+# Install viu for enhanced image display (optional)
+cargo install viu
+
+# Build and install lbxd
+cargo build --release
+cargo install --path .
+
+# Verify installation
+lbxd --version
 ```
 
-### Dependencies
+**Development build:**
+```bash
+# Clone and enter directory
+git clone https://github.com/Pranav-Karra-3301/lbxd.git
+cd lbxd
 
-lbxd requires these system dependencies:
-- **Python 3** with `letterboxdpy` package
-- **curl** for network requests
-- **A modern terminal** with Unicode support
+# Install dependencies
+pip3 install letterboxdpy
+
+# Run in development mode
+cargo run -- --help
+
+# Run tests
+cargo test
+
+# Build optimized release
+cargo build --release
+```
+
+### Prebuilt Binaries
+
+Download prebuilt binaries from the [releases page](https://github.com/Pranav-Karra-3301/lbxd/releases):
+
+- **Linux**: `lbxd-linux-x86_64.tar.gz`
+- **macOS Intel**: `lbxd-macos-x86_64.tar.gz`
+- **macOS Apple Silicon**: `lbxd-macos-aarch64.tar.gz`
+- **Windows**: `lbxd-windows-x86_64.exe.zip`
+
+### System Dependencies
+
+**Required:**
+- Python 3.8+ with `letterboxdpy` package
+
+**Optional but recommended:**
+- `viu` for enhanced terminal image display
+- Modern terminal with Unicode support
+
+**No setup required:**
+- ❌ No API keys needed (built-in defaults provided)
+- ❌ No Xcode or complex dependencies
+- ✅ Works immediately after installation
 
 ## 📖 Usage
 
@@ -165,30 +229,71 @@ lbxd config whoami
 
 lbxd automatically creates a cache directory at `~/.cache/lbxd/` to store user data for offline access. Cache entries expire after 6 hours to ensure fresh data.
 
+### API Keys
+
+lbxd comes with built-in API keys for TMDB and OMDB, so it works out of the box without any configuration. If you want to use your own API keys, you can set environment variables:
+
+```bash
+# Optional: Use your own TMDB API key
+export TMDB_API_KEY="your_tmdb_api_key_here"
+
+# Optional: Use your own OMDB API key  
+export OMDB_API_KEY="your_omdb_api_key_here"
+```
+
+For detailed API key configuration, see the [API Keys Guide](docs/api-keys.md).
+
+### Quick Examples
+
+```bash
+# Works immediately with default keys
+lbxd recent username
+
+# Optional: Use your own TMDB API key
+export TMDB_API_KEY="your_key_here"
+lbxd movie "Inception"
+
+# See examples/api-key-demo.sh for more configuration options
+```
+
 ## 🛠️ Development
 
 ### Building from Source
 
+**Prerequisites:**
+- Rust 1.88.0 or later
+- Python 3.8+ with pip
+- Git
+
+**Development setup:**
 ```bash
 # Clone the repository
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install dependencies
+# Install Python dependencies
 pip3 install letterboxdpy
+
+# Install viu for enhanced image display (optional)
+cargo install viu
+
+# Run in development mode
+cargo run -- --help
 
 # Run tests
 cargo test
 
-# Build in release mode
-cargo build --release
+# Run linting
+cargo clippy
 
-# Run with debug output
-RUST_LOG=debug cargo run -- recent username
+# Format code
+cargo fmt
+
+# Build optimized release
+cargo build --release
 ```
 
-### Project Structure
-
+**Project Structure:**
 ```
 src/
 ├── main.rs              # CLI entry point and version display
@@ -204,6 +309,16 @@ src/
 ├── cache/               # Intelligent caching system
 ├── config/              # Configuration management
 └── export/              # Data export functionality
+```
+
+**Environment Variables:**
+```bash
+# Optional: Use your own API keys
+export TMDB_API_KEY="your_tmdb_api_key_here"
+export OMDB_API_KEY="your_omdb_api_key_here"
+
+# Development logging
+export RUST_LOG=debug
 ```
 
 ## 🤝 Contributing

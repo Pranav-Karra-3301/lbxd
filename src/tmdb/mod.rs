@@ -2,8 +2,10 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use reqwest;
 use colored::*;
+use std::env;
 
-const TMDB_API_KEY: &str = "bce5788c33b687c14b610654579ff6aa";
+// Default API key - users can override with TMDB_API_KEY environment variable
+const DEFAULT_TMDB_API_KEY: &str = "bce5788c33b687c14b610654579ff6aa";
 const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL: &str = "https://image.tmdb.org/t/p/w780";  // Higher quality images
 const TMDB_IMAGE_ORIGINAL: &str = "https://image.tmdb.org/t/p/original";
@@ -37,15 +39,21 @@ impl TMDBClient {
         Self { client }
     }
 
+    /// Get TMDB API key from environment variable or use default
+    fn get_api_key() -> String {
+        env::var("TMDB_API_KEY").unwrap_or_else(|_| DEFAULT_TMDB_API_KEY.to_string())
+    }
+
     pub async fn search_movie(&self, query: &str) -> Result<Option<TMDBMovie>> {
         self.search_movie_with_year(query, None).await
     }
 
     pub async fn search_movie_with_year(&self, query: &str, year: Option<i32>) -> Result<Option<TMDBMovie>> {
+        let api_key = Self::get_api_key();
         let mut url = format!(
             "{}/search/movie?api_key={}&query={}",
             TMDB_BASE_URL,
-            TMDB_API_KEY,
+            api_key,
             urlencoding::encode(query)
         );
 
