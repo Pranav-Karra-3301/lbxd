@@ -2,10 +2,10 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>lbxd</id>
-    <version>0.1.0</version>
+    <version>2.1.1</version>
     <packageSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</packageSourceUrl>
     <owners>Pranav-Karra-3301</owners>
-    <title>lbxd</title>
+    <title>lbxd - Letterboxd CLI</title>
     <authors>Pranav Karra</authors>
     <projectUrl>https://github.com/Pranav-Karra-3301/lbxd</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/assets/icon.png</iconUrl>
@@ -13,22 +13,41 @@
     <licenseUrl>https://github.com/Pranav-Karra-3301/lbxd/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <projectSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</projectSourceUrl>
-    <docsUrl>https://github.com/Pranav-Karra-3301/lbxd/wiki</docsUrl>
+    <docsUrl>https://github.com/Pranav-Karra-3301/lbxd/tree/main/docs</docsUrl>
     <bugTrackerUrl>https://github.com/Pranav-Karra-3301/lbxd/issues</bugTrackerUrl>
-    <tags>letterboxd cli movies terminal rust</tags>
-    <summary>Beautiful command-line tool for Letterboxd</summary>
+    <tags>letterboxd cli movies terminal rust ascii film review</tags>
+    <summary>Beautiful command-line tool for Letterboxd with interactive TUI and rich terminal display</summary>
     <description>
-lbxd is a beautiful command-line tool written in Rust that lets you view Letterboxd activity directly in your terminal. It fetches any user's public RSS feed and displays their recent movies, ratings, and reviews in clean, expressive ASCII art and stylized text.
+lbxd is a powerful command-line tool written in Rust that brings Letterboxd to your terminal. View any user's movie activity, ratings, and reviews in beautiful ASCII art and stylized text.
 
-Features:
-- View recent activity for any Letterboxd user
-- Search for specific titles in user activity
-- Export data to JSON or Markdown formats
-- Beautiful terminal display with ASCII art
-- Intelligent caching for offline access
-- Cross-platform support
+## Features
+- 🎭 Interactive TUI for browsing complete movie collections
+- 📽️ View recent activity, ratings, and reviews for any user
+- 🔍 Search functionality for titles in user activity
+- 🎬 Movie database integration with TMDB
+- 📤 Export data to JSON or Markdown formats
+- 🎨 Beautiful terminal display with ASCII art and posters
+- ⚙️ Configurable settings and user preferences  
+- 💾 Intelligent caching for offline access
+- 🌍 Cross-platform support (Windows, macOS, Linux)
+
+## Quick Start
+After installation, try:
+- `lbxd recent username` - View recent activity
+- `lbxd movie "Inception"` - Search for movies
+- `lbxd browse username` - Interactive TUI mode
+- `lbxd --help` - See all commands
+
+## Requirements
+- Python 3.x (auto-installed if missing)
+- Optional: viu for enhanced image display
+
+No API keys required - works out of the box!
     </description>
     <releaseNotes>https://github.com/Pranav-Karra-3301/lbxd/releases</releaseNotes>
+    <dependencies>
+      <dependency id="python3" version="3.8.0" />
+    </dependencies>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

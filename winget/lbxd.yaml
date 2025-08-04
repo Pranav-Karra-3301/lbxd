@@ -1,11 +1,25 @@
 PackageIdentifier: Pranav-Karra-3301.lbxd
-PackageVersion: 0.1.0
+PackageVersion: 2.1.1
 PackageName: lbxd
 Publisher: Pranav Karra
 License: MIT
 LicenseUrl: https://github.com/Pranav-Karra-3301/lbxd/blob/main/LICENSE
-ShortDescription: Beautiful command-line tool for Letterboxd
-Description: lbxd is a beautiful command-line tool written in Rust that lets you view Letterboxd activity directly in your terminal. It fetches any user's public RSS feed and displays their recent movies, ratings, and reviews in clean, expressive ASCII art and stylized text.
+ShortDescription: Beautiful command-line tool for Letterboxd with interactive TUI
+Description: |-
+  lbxd is a powerful command-line tool written in Rust that brings Letterboxd to your terminal.
+  
+  Features:
+  - Interactive TUI for browsing complete movie collections
+  - View recent activity, ratings, and reviews for any user
+  - Search functionality for titles in user activity  
+  - Movie database integration with TMDB
+  - Export data to JSON or Markdown formats
+  - Beautiful terminal display with ASCII art and posters
+  - Configurable settings and user preferences
+  - Intelligent caching for offline access
+  - Cross-platform support
+  
+  No API keys required - works out of the box!
 Moniker: lbxd
 Tags:
 - letterboxd
@@ -13,12 +27,16 @@ Tags:
 - movies
 - terminal
 - rust
+- ascii
+- film
+- review
+- tui
 PackageUrl: https://github.com/Pranav-Karra-3301/lbxd
 Author: Pranav Karra
 Installers:
 - Architecture: x64
   InstallerType: zip
-  InstallerUrl: https://github.com/Pranav-Karra-3301/lbxd/releases/download/v0.1.0/lbxd-windows-x86_64.exe.zip
-  InstallerSha256: YOUR_SHA256_HERE
+  InstallerUrl: https://github.com/Pranav-Karra-3301/lbxd/releases/download/v2.1.1/lbxd-windows-x86_64.exe.zip
+  InstallerSha256: SHA256_PLACEHOLDER
 ManifestType: singleton
-ManifestVersion: 1.0.0
+ManifestVersion: 1.4.0

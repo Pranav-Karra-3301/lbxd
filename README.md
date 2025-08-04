@@ -162,6 +162,33 @@ lbxd config whoami
 
 lbxd automatically creates a cache directory at `~/.cache/lbxd/` to store user data for offline access. Cache entries expire after 6 hours to ensure fresh data.
 
+### API Keys
+
+lbxd comes with built-in API keys for TMDB and OMDB, so it works out of the box without any configuration. If you want to use your own API keys, you can set environment variables:
+
+```bash
+# Optional: Use your own TMDB API key
+export TMDB_API_KEY="your_tmdb_api_key_here"
+
+# Optional: Use your own OMDB API key  
+export OMDB_API_KEY="your_omdb_api_key_here"
+```
+
+For detailed API key configuration, see the [API Keys Guide](docs/api-keys.md).
+
+### Quick Examples
+
+```bash
+# Works immediately with default keys
+lbxd recent username
+
+# Optional: Use your own TMDB API key
+export TMDB_API_KEY="your_key_here"
+lbxd movie "Inception"
+
+# See examples/api-key-demo.sh for more configuration options
+```
+
 ## 🛠️ Development
 
 ### Building from Source

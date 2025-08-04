@@ -2,8 +2,10 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use std::time::Duration;
+use std::env;
 
-const OMDB_API_KEY: &str = "ad032cc2";
+// Default API key - users can override with OMDB_API_KEY environment variable
+const DEFAULT_OMDB_API_KEY: &str = "ad032cc2";
 const OMDB_BASE_URL: &str = "http://www.omdbapi.com/";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,8 +104,14 @@ impl OMDBClient {
         Self { client }
     }
 
+    /// Get OMDB API key from environment variable or use default
+    fn get_api_key() -> String {
+        env::var("OMDB_API_KEY").unwrap_or_else(|_| DEFAULT_OMDB_API_KEY.to_string())
+    }
+
     pub async fn get_movie_by_title(&self, title: &str, year: Option<u16>) -> Result<Option<OMDBMovie>> {
-        let mut url = format!("{}?apikey={}&t={}", OMDB_BASE_URL, OMDB_API_KEY, urlencoding::encode(title));
+        let api_key = Self::get_api_key();
+        let mut url = format!("{}?apikey={}&t={}", OMDB_BASE_URL, api_key, urlencoding::encode(title));
         
         if let Some(year) = year {
             url.push_str(&format!("&y={}", year));
@@ -120,7 +128,8 @@ impl OMDBClient {
     }
 
     pub async fn search_movies(&self, query: &str, year: Option<u16>) -> Result<Vec<OMDBSearchMovie>> {
-        let mut url = format!("{}?apikey={}&s={}", OMDB_BASE_URL, OMDB_API_KEY, urlencoding::encode(query));
+        let api_key = Self::get_api_key();
+        let mut url = format!("{}?apikey={}&s={}", OMDB_BASE_URL, api_key, urlencoding::encode(query));
         
         if let Some(year) = year {
             url.push_str(&format!("&y={}", year));
@@ -137,7 +146,8 @@ impl OMDBClient {
     }
 
     pub async fn get_movie_by_imdb_id(&self, imdb_id: &str) -> Result<Option<OMDBMovie>> {
-        let url = format!("{}?apikey={}&i={}", OMDB_BASE_URL, OMDB_API_KEY, imdb_id);
+        let api_key = Self::get_api_key();
+        let url = format!("{}?apikey={}&i={}", OMDB_BASE_URL, api_key, imdb_id);
 
         let response = self.client.get(&url).send().await?;
         let omdb_movie: OMDBMovie = response.json().await?;

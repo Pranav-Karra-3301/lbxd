@@ -1,0 +1,315 @@
+name: Update Package Configurations
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update (e.g., v2.1.1)'
+        required: true
+        type: string
+
+jobs:
+  update-packages:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Set up variables
+      id: vars
+      run: |
+        if [ "${{ github.event_name }}" = "release" ]; then
+          VERSION="${{ github.event.release.tag_name }}"
+        else
+          VERSION="${{ github.event.inputs.version }}"
+        fi
+        
+        # Remove 'v' prefix for version numbers
+        CLEAN_VERSION=${VERSION#v}
+        
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "clean_version=${CLEAN_VERSION}" >> $GITHUB_OUTPUT
+        echo "Release version: ${VERSION}"
+        echo "Clean version: ${CLEAN_VERSION}"
+    
+    - name: Download release assets and calculate checksums
+      id: checksums
+      run: |
+        VERSION="${{ steps.vars.outputs.version }}"
+        
+        # Create temp directory for downloads
+        mkdir -p /tmp/release-assets
+        cd /tmp/release-assets
+        
+        # Download all release assets
+        echo "Downloading release assets for ${VERSION}..."
+        
+        # Define assets to download
+        ASSETS=(
+          "lbxd-linux-x86_64.tar.gz"
+          "lbxd-macos-x86_64.tar.gz" 
+          "lbxd-macos-aarch64.tar.gz"
+          "lbxd-windows-x86_64.exe.zip"
+        )
+        
+        # Download each asset and calculate checksums
+        declare -A CHECKSUMS
+        for asset in "${ASSETS[@]}"; do
+          url="https://github.com/Pranav-Karra-3301/lbxd/releases/download/${VERSION}/${asset}"
+          echo "Downloading ${asset}..."
+          
+          if curl -sL "${url}" -o "${asset}"; then
+            sha256=$(sha256sum "${asset}" | cut -d' ' -f1)
+            echo "${asset}: ${sha256}"
+            
+            # Store checksums in environment
+            case "${asset}" in
+              *linux-x86_64*)
+                echo "linux_x86_64_sha256=${sha256}" >> $GITHUB_OUTPUT
+                ;;
+              *macos-x86_64*)
+                echo "macos_x86_64_sha256=${sha256}" >> $GITHUB_OUTPUT
+                ;;
+              *macos-aarch64*)
+                echo "macos_aarch64_sha256=${sha256}" >> $GITHUB_OUTPUT
+                ;;
+              *windows-x86_64*)
+                echo "windows_x86_64_sha256=${sha256}" >> $GITHUB_OUTPUT
+                ;;
+            esac
+          else
+            echo "Warning: Could not download ${asset}"
+          fi
+        done
+    
+    - name: Update Homebrew Formula
+      run: |
+        VERSION="${{ steps.vars.outputs.version }}"
+        CLEAN_VERSION="${{ steps.vars.outputs.clean_version }}"
+        MACOS_X86_64_SHA="${{ steps.checksums.outputs.macos_x86_64_sha256 }}"
+        MACOS_AARCH64_SHA="${{ steps.checksums.outputs.macos_aarch64_sha256 }}"
+        
+        # Update Formula/lbxd.rb
+        cat > Formula/lbxd.rb << EOF
+        class Lbxd < Formula
+          desc "Terminal-based Letterboxd client for movie enthusiasts"
+          homepage "https://github.com/Pranav-Karra-3301/lbxd"
+          version "${CLEAN_VERSION}"
+          license "MIT"
+        
+          if Hardware::CPU.intel?
+            url "https://github.com/Pranav-Karra-3301/lbxd/releases/download/${VERSION}/lbxd-macos-x86_64.tar.gz"
+            sha256 "${MACOS_X86_64_SHA}"
+          elsif Hardware::CPU.arm?
+            url "https://github.com/Pranav-Karra-3301/lbxd/releases/download/${VERSION}/lbxd-macos-aarch64.tar.gz"
+            sha256 "${MACOS_AARCH64_SHA}"
+          end
+        
+          depends_on "python@3.12"
+          depends_on "viu"
+        
+          def install
+            bin.install "lbxd"
+            
+            # Install Python dependencies
+            system Formula["python@3.12"].opt_bin/"pip3", "install", "--break-system-packages", "letterboxdpy"
+          end
+        
+          test do
+            system "#{bin}/lbxd", "--version"
+          end
+        end
+        EOF
+        
+        echo "Updated Homebrew formula with version ${CLEAN_VERSION}"
+    
+    - name: Update Chocolatey Package
+      run: |
+        VERSION="${{ steps.vars.outputs.version }}"
+        CLEAN_VERSION="${{ steps.vars.outputs.clean_version }}"
+        WINDOWS_SHA="${{ steps.checksums.outputs.windows_x86_64_sha256 }}"
+        
+        # Update chocolatey/lbxd.nuspec
+        cat > chocolatey/lbxd.nuspec << EOF
+        <?xml version="1.0" encoding="utf-8"?>
+        <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+          <metadata>
+            <id>lbxd</id>
+            <version>${CLEAN_VERSION}</version>
+            <packageSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</packageSourceUrl>
+            <owners>Pranav-Karra-3301</owners>
+            <title>lbxd - Terminal Letterboxd Client</title>
+            <authors>Pranav Karra</authors>
+            <projectUrl>https://github.com/Pranav-Karra-3301/lbxd</projectUrl>
+            <iconUrl>https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/assets/icon.png</iconUrl>
+            <copyright>2024 Pranav Karra</copyright>
+            <licenseUrl>https://github.com/Pranav-Karra-3301/lbxd/blob/main/LICENSE</licenseUrl>
+            <requireLicenseAcceptance>false</requireLicenseAcceptance>
+            <projectSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</projectSourceUrl>
+            <docsUrl>https://github.com/Pranav-Karra-3301/lbxd/tree/main/docs</docsUrl>
+            <bugTrackerUrl>https://github.com/Pranav-Karra-3301/lbxd/issues</bugTrackerUrl>
+            <tags>letterboxd movies terminal cli rust</tags>
+            <summary>A fast, beautiful terminal interface for Letterboxd - track, discover, and explore films from your command line</summary>
+            <description><![CDATA[# lbxd - Terminal Letterboxd Client
+        
+        A blazingly fast terminal interface for Letterboxd that brings the movie-tracking experience to your command line.
+        
+        ## Features
+        
+        - 🎬 **Profile Management**: View detailed user profiles, stats, and favorite films
+        - 📽️ **Recent Activity**: Track recent watches and ratings in beautiful terminal layouts
+        - 🖼️ **Visual Experience**: High-quality poster displays with viu integration
+        - ⚡ **Lightning Fast**: Rust-powered performance with intelligent caching
+        - 🎨 **Beautiful Interface**: Modern TUI with intuitive navigation and rich formatting
+        - 🔄 **Real-time Data**: Direct integration with Letterboxd's data
+        - 📊 **Statistics**: Comprehensive viewing stats and film discovery
+        - 🎯 **Search & Discovery**: Find films and explore new movies
+        
+        ## Quick Start
+        
+        After installation, try these commands:
+        
+        ```
+        lbxd recent username        # View recent activity
+        lbxd profile username       # Show user profile
+        lbxd search "movie name"    # Search for films
+        lbxd --help                 # Show all commands
+        ```
+        
+        No setup required - includes built-in API keys and works immediately after installation.
+        
+        ## What's Included
+        
+        - lbxd binary with all core functionality
+        - Python 3 and letterboxdpy dependency (auto-installed)
+        - viu for enhanced image display (auto-installed)
+        - Complete documentation and examples
+        
+        Visit the [GitHub repository](https://github.com/Pranav-Karra-3301/lbxd) for complete documentation.
+        ]]></description>
+            <releaseNotes>https://github.com/Pranav-Karra-3301/lbxd/releases/tag/${VERSION}</releaseNotes>
+            <dependencies>
+              <dependency id="python3" version="3.8.0" />
+            </dependencies>
+          </metadata>
+          <files>
+            <file src="tools\**" target="tools" />
+          </files>
+        </package>
+        EOF
+        
+        # Update chocolatey/tools/chocolateyinstall.ps1
+        cat > chocolatey/tools/chocolateyinstall.ps1 << 'EOF'
+        $ErrorActionPreference = 'Stop'
+        
+        $packageName = 'lbxd'
+        $toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
+        $url64 = 'https://github.com/Pranav-Karra-3301/lbxd/releases/download/${VERSION}/lbxd-windows-x86_64.exe.zip'
+        $checksum64 = '${WINDOWS_SHA}'
+        
+        $packageArgs = @{
+          packageName   = $packageName
+          unzipLocation = $toolsDir
+          url64bit      = $url64
+          checksum64    = $checksum64
+          checksumType64= 'sha256'
+        }
+        
+        Install-ChocolateyZipPackage @packageArgs
+        
+        # Install Python dependencies
+        Write-Host "Installing Python dependencies..."
+        try {
+          $pythonCmd = Get-Command python -ErrorAction Stop
+          & $pythonCmd -m pip install letterboxdpy
+          Write-Host "Successfully installed letterboxdpy"
+        } catch {
+          Write-Warning "Could not install letterboxdpy automatically. Please install manually with: pip install letterboxdpy"
+        }
+        
+        # Try to install viu for enhanced image display
+        Write-Host "Installing viu for enhanced image display..."
+        try {
+          if (Get-Command choco -ErrorAction SilentlyContinue) {
+            choco install viu -y
+            Write-Host "Successfully installed viu"
+          } elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+            scoop install viu
+            Write-Host "Successfully installed viu"
+          } else {
+            Write-Warning "Could not install viu automatically. Image display will use ASCII art mode."
+          }
+        } catch {
+          Write-Warning "Could not install viu. Image display will use ASCII art mode."
+        }
+        EOF
+        
+        # Substitute variables in the PowerShell script
+        sed -i "s/\${VERSION}/${VERSION}/g" chocolatey/tools/chocolateyinstall.ps1
+        sed -i "s/\${WINDOWS_SHA}/${WINDOWS_SHA}/g" chocolatey/tools/chocolateyinstall.ps1
+        
+        echo "Updated Chocolatey package with version ${CLEAN_VERSION}"
+    
+    - name: Update Winget Manifest
+      run: |
+        CLEAN_VERSION="${{ steps.vars.outputs.clean_version }}"
+        WINDOWS_SHA="${{ steps.checksums.outputs.windows_x86_64_sha256 }}"
+        
+        # Update winget/lbxd.yaml
+        cat > winget/lbxd.yaml << EOF
+        PackageIdentifier: Pranav-Karra-3301.lbxd
+        PackageVersion: ${CLEAN_VERSION}
+        PackageName: lbxd
+        Publisher: Pranav Karra
+        License: MIT
+        LicenseUrl: https://github.com/Pranav-Karra-3301/lbxd/blob/main/LICENSE
+        ShortDescription: Terminal-based Letterboxd client for movie enthusiasts
+        Description: A blazingly fast terminal interface for Letterboxd that brings the movie-tracking experience to your command line. Features profile management, recent activity tracking, visual poster displays, and comprehensive film discovery tools.
+        Homepage: https://github.com/Pranav-Karra-3301/lbxd
+        Tags:
+        - letterboxd
+        - movies
+        - terminal
+        - cli
+        - rust
+        - films
+        - tracking
+        Installers:
+        - Architecture: x64
+          InstallerType: zip
+          InstallerUrl: https://github.com/Pranav-Karra-3301/lbxd/releases/download/v${CLEAN_VERSION}/lbxd-windows-x86_64.exe.zip
+          InstallerSha256: ${WINDOWS_SHA}
+        ManifestType: merged
+        ManifestVersion: 1.4.0
+        EOF
+        
+        echo "Updated Winget manifest with version ${CLEAN_VERSION}"
+    
+    - name: Commit changes
+      run: |
+        VERSION="${{ steps.vars.outputs.version }}"
+        
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        
+        git add Formula/lbxd.rb chocolatey/ winget/lbxd.yaml
+        
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "chore: update package configurations for ${VERSION}
+          
+          - Updated Homebrew formula with new checksums
+          - Updated Chocolatey package specification
+          - Updated Winget manifest
+          - Automated release ${VERSION}"
+          
+          git push
+          echo "Committed and pushed package configuration updates"
+        fi
