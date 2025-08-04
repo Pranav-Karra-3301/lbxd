@@ -21,6 +21,15 @@ impl AsciiConverter {
         Self { client }
     }
 
+    /// Get the correct Python executable name for the current platform
+    fn python_executable() -> &'static str {
+        if cfg!(windows) {
+            "python"
+        } else {
+            "python3"
+        }
+    }
+
     pub fn detect_terminal_colors() -> bool {
         // Check TERM environment variable
         if let Ok(term) = std::env::var("TERM") {
@@ -105,7 +114,7 @@ impl AsciiConverter {
         let supports_colors = Self::detect_terminal_colors();
 
         // Build Python command with reduced scale for better terminal display
-        let mut cmd = Command::new("python3");
+        let mut cmd = Command::new(Self::python_executable());
         cmd.arg(&script_path)
             .arg("--input")
             .arg(&*input_path)

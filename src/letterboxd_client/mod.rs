@@ -19,6 +19,15 @@ impl LetterboxdClient {
         Ok(Self {})
     }
 
+    /// Get the correct Python executable name for the current platform
+    fn python_executable() -> &'static str {
+        if cfg!(windows) {
+            "python"
+        } else {
+            "python3"
+        }
+    }
+
     pub async fn get_comprehensive_profile(
         &self,
         username: &str,
@@ -155,7 +164,7 @@ except ImportError:
     show_loading_animation("letterboxdpy installed successfully!")
 "#;
 
-        let child = Command::new("python3")
+        let child = Command::new(Self::python_executable())
             .arg("-c")
             .arg(check_script)
             .stdout(Stdio::piped())
@@ -247,7 +256,7 @@ except Exception as e:
             username
         );
 
-        let child = Command::new("python3")
+        let child = Command::new(Self::python_executable())
             .arg("-c")
             .arg(&python_script)
             .stdout(Stdio::piped())
@@ -751,7 +760,7 @@ except Exception as e:
             username
         );
 
-        let child = Command::new("python3")
+        let child = Command::new(Self::python_executable())
             .arg("-c")
             .arg(&python_script)
             .stdout(Stdio::piped())

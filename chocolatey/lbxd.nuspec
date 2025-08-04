@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>lbxd</id>
-    <version>2.2.2</version>
+    <version>2.2.3</version>
     <packageSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</packageSourceUrl>
     <owners>Pranav-Karra-3301</owners>
     <title>lbxd - Letterboxd CLI</title>
