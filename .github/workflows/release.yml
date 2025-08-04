@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  actions: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -13,6 +17,7 @@ jobs:
     name: Build and Release
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -23,11 +28,11 @@ jobs:
             target: x86_64-pc-windows-msvc
             artifact_name: lbxd.exe
             asset_name: lbxd-windows-x86_64.exe.zip
-          - os: macos-latest
+          - os: macos-13
             target: x86_64-apple-darwin
             artifact_name: lbxd
             asset_name: lbxd-macos-x86_64.tar.gz
-          - os: macos-latest
+          - os: macos-14
             target: aarch64-apple-darwin
             artifact_name: lbxd
             asset_name: lbxd-macos-aarch64.tar.gz
@@ -50,6 +55,24 @@ jobs:
         python -m pip install --upgrade pip
         pip install letterboxdpy
 
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Build release
       run: cargo build --release --target ${{ matrix.target }}
 
@@ -69,9 +92,39 @@ jobs:
         cd target/${{ matrix.target }}/release
         7z a ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
 
-    - name: Release
-      uses: softprops/action-gh-release@v2
-      if: startsWith(github.ref, 'refs/tags/')
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
       with:
-        files: ${{ matrix.asset_name }}
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.asset_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+
+    - name: Display structure of downloaded files
+      run: ls -la ./artifacts/
+
+    - name: Move artifacts to root
+      run: |
+        find ./artifacts -name "*.tar.gz" -o -name "*.zip" | while read file; do
+          mv "$file" ./
+        done
+        ls -la *.tar.gz *.zip
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          *.tar.gz
+          *.zip
         generate_release_notes: true
+        draft: false
+        prerelease: false
