@@ -4,8 +4,8 @@ use ratatui::{
     Frame,
 };
 
-use crate::profile::{LoadingProgress, LoadingStage};
 use super::AppStyles;
+use crate::profile::{LoadingProgress, LoadingStage};
 
 pub struct ProgressBar {
     progress: LoadingProgress,
@@ -51,17 +51,20 @@ impl ProgressBar {
         };
 
         let gauge = Gauge::default()
-            .block(Block::default().borders(Borders::ALL).border_style(styles.border_style()))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(styles.border_style()),
+            )
             .gauge_style(styles.progress_bar_style())
             .ratio(ratio / 100.0)
             .label(format!("{:.1}%", ratio));
         f.render_widget(gauge, chunks[2]);
 
         // Current action
-        let action_text = format!("{} ({}/{})", 
-            self.progress.message, 
-            self.progress.current, 
-            self.progress.total
+        let action_text = format!(
+            "{} ({}/{})",
+            self.progress.message, self.progress.current, self.progress.total
         );
         let action_paragraph = Paragraph::new(action_text)
             .alignment(Alignment::Center)
@@ -95,7 +98,7 @@ impl ProgressBar {
     fn get_animated_loading_message(&self) -> &'static str {
         let messages = [
             "Loading...",
-            "Parsing...", 
+            "Parsing...",
             "Preparing...",
             "Cooking...",
             "Organizing...",
@@ -103,7 +106,7 @@ impl ProgressBar {
             "Spicing...",
             "Seasoning...",
         ];
-        
+
         // Use current step and total to create animation effect
         let index = (self.progress.current + (self.progress.total * 2)) % messages.len();
         messages[index]

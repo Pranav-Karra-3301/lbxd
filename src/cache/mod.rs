@@ -1,9 +1,9 @@
 use crate::models::UserProfile;
 use anyhow::Result;
+use chrono::{DateTime, Duration, Utc};
 use serde_json;
 use std::fs;
 use std::path::PathBuf;
-use chrono::{DateTime, Duration, Utc};
 
 pub struct CacheManager {
     cache_dir: PathBuf,
@@ -13,13 +13,13 @@ impl CacheManager {
     pub fn new() -> Result<Self> {
         let cache_dir = Self::get_cache_dir()?;
         fs::create_dir_all(&cache_dir)?;
-        
+
         Ok(Self { cache_dir })
     }
 
     pub fn get_cached_profile(&self, username: &str) -> Option<UserProfile> {
         let cache_file = self.cache_dir.join(format!("{}.json", username));
-        
+
         if !cache_file.exists() {
             return None;
         }
@@ -27,7 +27,7 @@ impl CacheManager {
         let metadata = fs::metadata(&cache_file).ok()?;
         let modified = metadata.modified().ok()?;
         let modified_dt: DateTime<Utc> = modified.into();
-        
+
         if Utc::now() - modified_dt > Duration::hours(6) {
             return None;
         }
@@ -54,9 +54,9 @@ impl CacheManager {
     }
 
     fn get_cache_dir() -> Result<PathBuf> {
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-        
+        let home_dir =
+            dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
+
         Ok(home_dir.join(".cache").join("lbxd"))
     }
 }

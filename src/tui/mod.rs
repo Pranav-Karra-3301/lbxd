@@ -13,16 +13,15 @@ use tokio::sync::mpsc;
 
 pub mod app;
 pub mod grid;
-pub mod styles;
 pub mod progress;
+pub mod styles;
 
 pub use app::*;
 pub use grid::*;
-pub use styles::*;
 pub use progress::*;
+pub use styles::*;
 
 use crate::profile::{ComprehensiveProfile, LoadingProgress};
-
 
 pub async fn run_tui(username: &str) -> Result<()> {
     // Setup terminal
@@ -34,15 +33,19 @@ pub async fn run_tui(username: &str) -> Result<()> {
 
     // Create app state
     let mut app = App::new(username.to_string());
-    
+
     // Create channels for progress updates
     let (progress_tx, progress_rx) = mpsc::unbounded_channel::<LoadingProgress>();
-    
+
     // Start data loading in background
     let username_clone = username.to_string();
     let scraper_handle = tokio::spawn(async move {
         match crate::letterboxd_client::LetterboxdClient::new() {
-            Ok(client) => client.get_comprehensive_profile(&username_clone, Some(progress_tx)).await,
+            Ok(client) => {
+                client
+                    .get_comprehensive_profile(&username_clone, Some(progress_tx))
+                    .await
+            }
             Err(e) => Err(e),
         }
     });
@@ -70,12 +73,14 @@ async fn run_ui<B: Backend>(
 ) -> Result<()> {
     // Show loading screen while scraper is running
     let mut scraper_complete = false;
-    
+
     loop {
         // Check if scraper is done
         if !scraper_complete {
             // Poll the scraper handle non-blockingly
-            match tokio::time::timeout(tokio::time::Duration::from_millis(10), &mut scraper_handle).await {
+            match tokio::time::timeout(tokio::time::Duration::from_millis(10), &mut scraper_handle)
+                .await
+            {
                 Ok(task_result) => {
                     match task_result {
                         Ok(profile_result) => {
@@ -83,7 +88,7 @@ async fn run_ui<B: Backend>(
                                 Ok(profile) => {
                                     app.set_profile(profile);
                                     scraper_complete = true;
-                                    
+
                                     // Auto-load first movie poster
                                     if let Some(first_movie) = app.get_first_movie_title() {
                                         app.auto_load_first_poster(first_movie);
@@ -106,20 +111,20 @@ async fn run_ui<B: Backend>(
                 }
             }
         }
-        
+
         // Always draw the UI (will show loading screen if not complete)
         terminal.draw(|f| app.render(f))?;
-        
+
         // If loading is complete, continue with main UI loop
         if scraper_complete && !matches!(app.state, crate::tui::AppState::Loading) {
             break;
         }
-        
+
         // Check for progress updates
         while let Ok(progress) = progress_rx.try_recv() {
             app.update_progress(progress);
         }
-        
+
         // Handle basic input during loading (just quit)
         if event::poll(tokio::time::Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
@@ -129,11 +134,11 @@ async fn run_ui<B: Backend>(
             }
         }
     }
-    
+
     let omdb_client = crate::omdb::OMDBClient::new();
     let tmdb_client = crate::tmdb::TMDBClient::new();
     let mut last_search_query = String::new();
-    
+
     // Now run the UI loop
     loop {
         terminal.draw(|f| app.render(f))?;
@@ -141,14 +146,14 @@ async fn run_ui<B: Backend>(
         // Handle poster loading (simplified for development)
         if let Some(title) = app.get_pending_poster_load() {
             app.clear_pending_poster_load();
-            
+
             // Try to get movie details from TMDB and show poster URL
             let title_clone = title.clone();
             if let Ok(Some(movie)) = tmdb_client.search_movie(&title_clone).await {
                 if let Some(ref poster_path) = movie.poster_path {
                     let poster_url = tmdb_client.get_poster_url(poster_path);
                     let dev_info = format!("🎬 Poster for {}\n\n[Development Mode]\nPoster URL:\n{}\n\nTMDB ID: {}\nRelease: {}", 
-                        title, 
+                        title,
                         poster_url,
                         movie.id,
                         movie.release_date.as_deref().unwrap_or("Unknown")
@@ -159,11 +164,13 @@ async fn run_ui<B: Backend>(
                     app.set_poster_result(title, fallback);
                 }
             } else {
-                let fallback = format!("🎬 Movie not found: {}\n\n[Development Mode]\nTMDB search failed", title);
+                let fallback = format!(
+                    "🎬 Movie not found: {}\n\n[Development Mode]\nTMDB search failed",
+                    title
+                );
                 app.set_poster_result(title, fallback);
             }
         }
-
 
         // Handle search functionality
         if app.should_perform_search() && app.get_search_query() != last_search_query {
@@ -177,7 +184,7 @@ async fn run_ui<B: Backend>(
 
         // Handle events with timeout
         let timeout = tokio::time::Duration::from_millis(100);
-        
+
         // Check for progress updates (in case there are still some in the channel)
         while let Ok(progress) = progress_rx.try_recv() {
             app.update_progress(progress);

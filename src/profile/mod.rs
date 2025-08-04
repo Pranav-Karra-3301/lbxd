@@ -68,7 +68,7 @@ pub struct ComprehensiveProfile {
     pub favorite_films: Vec<FavoriteFilm>,
     pub recent_activity: Vec<UserMovieEntry>,
     pub all_movies: Vec<UserMovieEntry>, // Complete film diary
-    pub watchlist: Vec<DetailedMovie>, // User's watchlist
+    pub watchlist: Vec<DetailedMovie>,   // User's watchlist
     pub lists: Vec<UserList>,
     pub member_since: Option<String>,
     pub enhanced_stats: Option<EnhancedStatistics>,

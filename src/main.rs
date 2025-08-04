@@ -1,14 +1,14 @@
 use clap::Parser;
 use lbxd::{
-    cli::{Cli, Commands, ConfigCommands, ColorModeArg, DisplayModeArg},
-    display::DisplayEngine,
-    feed::FeedParser,
     cache::CacheManager,
+    cli::{Cli, ColorModeArg, Commands, ConfigCommands, DisplayModeArg},
+    config::{ColorMode, ConfigManager, DisplayMode},
+    display::DisplayEngine,
     export::ExportManager,
-    config::{ConfigManager, ColorMode, DisplayMode},
-    tmdb::TMDBClient,
-    onboarding::OnboardingManager,
+    feed::FeedParser,
     letterboxd_client::LetterboxdClient,
+    onboarding::OnboardingManager,
+    tmdb::TMDBClient,
     tui,
 };
 
@@ -18,7 +18,7 @@ async fn main() {
     let display = DisplayEngine::new();
     let feed_parser = FeedParser::new();
     let export_manager = ExportManager::new();
-    
+
     let mut config_manager = match ConfigManager::new() {
         Ok(config) => config,
         Err(_) => {
@@ -34,7 +34,7 @@ async fn main() {
             display.print_error(&format!("Setup failed: {}", e));
             return;
         }
-        
+
         // Reload config manager after onboarding
         config_manager = match ConfigManager::new() {
             Ok(config) => config,
@@ -43,13 +43,13 @@ async fn main() {
                 return;
             }
         };
-        
+
         // If only --reconfig was used (no subcommand), exit after setup
         if cli.reconfig && cli.command.is_none() {
             return;
         }
     }
-    
+
     let cache_manager = match CacheManager::new() {
         Ok(cache) => Some(cache),
         Err(_) => {
@@ -67,12 +67,17 @@ async fn main() {
                 let actual_username = resolve_username(&username, &config_manager, &display).await;
                 if let Some(actual_username) = actual_username {
                     display.print_minimal_logo();
-                    
+
                     match LetterboxdClient::new() {
                         Ok(client) => {
-                            display.print_loading_animation("Fetching profile stats...", 1000).await;
-                            
-                            match client.get_comprehensive_profile(&actual_username, None).await {
+                            display
+                                .print_loading_animation("Fetching profile stats...", 1000)
+                                .await;
+
+                            match client
+                                .get_comprehensive_profile(&actual_username, None)
+                                .await
+                            {
                                 Ok(comprehensive_profile) => {
                                     // Convert to basic profile stats for display
                                     let profile_stats = lbxd::profile::ProfileStats {
@@ -87,14 +92,20 @@ async fn main() {
                                         favorite_films: comprehensive_profile.favorite_films,
                                     };
                                     display.show_profile_stats(&profile_stats).await;
-                                },
+                                }
                                 Err(e) => {
-                                    display.print_error(&format!("Failed to fetch profile stats: {}", e));
+                                    display.print_error(&format!(
+                                        "Failed to fetch profile stats: {}",
+                                        e
+                                    ));
                                 }
                             }
                         }
                         Err(e) => {
-                            display.print_error(&format!("Failed to initialize Letterboxd client: {}", e));
+                            display.print_error(&format!(
+                                "Failed to initialize Letterboxd client: {}",
+                                e
+                            ));
                         }
                     }
                 }
@@ -116,7 +127,16 @@ async fn main() {
     };
 
     match command {
-        Commands::Recent { username, limit, date, rated, reviewed, vertical, ascii, width } => {
+        Commands::Recent {
+            username,
+            limit,
+            date,
+            rated,
+            reviewed,
+            vertical,
+            ascii,
+            width,
+        } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
                 return;
@@ -124,7 +144,7 @@ async fn main() {
             let actual_username = actual_username.unwrap();
 
             display.print_minimal_logo();
-            
+
             let profile = if let Some(ref cache) = cache_manager {
                 if let Some(cached) = cache.get_cached_profile(&actual_username) {
                     cached
@@ -133,7 +153,7 @@ async fn main() {
                         Ok(profile) => {
                             let _ = cache.cache_profile(&profile);
                             profile
-                        },
+                        }
                         Err(e) => {
                             display.print_error(&format!("Failed to fetch user data: {}", e));
                             return;
@@ -151,10 +171,17 @@ async fn main() {
             };
 
             let filtered_profile = filter_entries(profile, date, rated, reviewed);
-            display.show_user_activity(&filtered_profile, limit, vertical, ascii, width).await;
-        },
-        
-        Commands::Search { username, title, ascii, width } => {
+            display
+                .show_user_activity(&filtered_profile, limit, vertical, ascii, width)
+                .await;
+        }
+
+        Commands::Search {
+            username,
+            title,
+            ascii,
+            width,
+        } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
                 return;
@@ -162,41 +189,63 @@ async fn main() {
             let actual_username = actual_username.unwrap();
 
             display.print_minimal_logo();
-            
+
             match feed_parser.fetch_user_feed(&actual_username).await {
                 Ok(profile) => {
-                    let matching_entries: Vec<_> = profile.entries
+                    let matching_entries: Vec<_> = profile
+                        .entries
                         .iter()
-                        .filter(|entry| entry.movie.title.to_lowercase().contains(&title.to_lowercase()))
+                        .filter(|entry| {
+                            entry
+                                .movie
+                                .title
+                                .to_lowercase()
+                                .contains(&title.to_lowercase())
+                        })
                         .collect();
-                    
+
                     if matching_entries.is_empty() {
                         display.print_error(&format!("No movies found matching '{}'", title));
                     } else {
-                        display.print_success(&format!("Found {} matching entries:", matching_entries.len()));
+                        display.print_success(&format!(
+                            "Found {} matching entries:",
+                            matching_entries.len()
+                        ));
                         for entry in matching_entries {
-                            display.show_user_activity(&lbxd::models::UserProfile {
-                                username: actual_username.clone(),
-                                display_name: profile.display_name.clone(),
-                                avatar_url: None,
-                                rss_url: profile.rss_url.clone(),
-                                entries: vec![entry.clone()],
-                            }, None, true, ascii, width).await; // Default to vertical for search results
+                            display
+                                .show_user_activity(
+                                    &lbxd::models::UserProfile {
+                                        username: actual_username.clone(),
+                                        display_name: profile.display_name.clone(),
+                                        avatar_url: None,
+                                        rss_url: profile.rss_url.clone(),
+                                        entries: vec![entry.clone()],
+                                    },
+                                    None,
+                                    true,
+                                    ascii,
+                                    width,
+                                )
+                                .await; // Default to vertical for search results
                         }
                     }
-                },
+                }
                 Err(e) => {
                     display.print_error(&format!("Failed to fetch user data: {}", e));
                 }
             }
-        },
-        
+        }
+
         Commands::Compare { usernames: _ } => {
             display.print_minimal_logo();
             display.print_error("Compare feature is under development. Check back soon!");
-        },
-        
-        Commands::Export { username, format, output } => {
+        }
+
+        Commands::Export {
+            username,
+            format,
+            output,
+        } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
             if actual_username.is_none() {
                 return;
@@ -204,80 +253,86 @@ async fn main() {
             let actual_username = actual_username.unwrap();
 
             match feed_parser.fetch_user_feed(&actual_username).await {
-                Ok(profile) => {
-                    match export_manager.export_profile(&profile, &format, &output) {
-                        Ok(_) => display.print_success(&format!("Data exported to {}", output)),
-                        Err(e) => display.print_error(&format!("Export failed: {}", e)),
-                    }
+                Ok(profile) => match export_manager.export_profile(&profile, &format, &output) {
+                    Ok(_) => display.print_success(&format!("Data exported to {}", output)),
+                    Err(e) => display.print_error(&format!("Export failed: {}", e)),
                 },
                 Err(e) => {
                     display.print_error(&format!("Failed to fetch user data: {}", e));
                 }
             }
-        },
-        
-        Commands::Summary { username: _, year: _ } => {
+        }
+
+        Commands::Summary {
+            username: _,
+            year: _,
+        } => {
             display.print_minimal_logo();
             display.print_error("Summary feature is under development. Check back soon!");
-        },
+        }
 
-        Commands::Movie { title, ascii, width } => {
+        Commands::Movie {
+            title,
+            ascii,
+            width,
+        } => {
             display.print_minimal_logo();
 
             let tmdb_client = TMDBClient::new();
-            display.print_loading_animation("Searching TMDB...", 1000).await;
-            
+            display
+                .print_loading_animation("Searching TMDB...", 1000)
+                .await;
+
             match tmdb_client.search_movie(&title).await {
                 Ok(Some(movie)) => {
                     display.show_tmdb_movie(&movie, ascii, width).await;
-                },
+                }
                 Ok(None) => {
                     display.print_error(&format!("No movies found for '{}'", title));
-                },
+                }
                 Err(e) => {
                     display.print_error(&format!("Failed to search TMDB: {}", e));
                 }
             }
-        },
+        }
 
         Commands::Config { config_command } => {
             display.print_minimal_logo();
 
             match config_command {
-                ConfigCommands::Whoami => {
-                    match config_manager.get_username() {
-                        Ok(Some(username)) => {
-                            display.print_success(&format!("Current username: {}", username));
-                        },
-                        Ok(None) => {
-                            display.print_warning("No username is currently saved");
-                        },
-                        Err(e) => {
-                            display.print_error(&format!("Failed to read config: {}", e));
-                        }
+                ConfigCommands::Whoami => match config_manager.get_username() {
+                    Ok(Some(username)) => {
+                        display.print_success(&format!("Current username: {}", username));
+                    }
+                    Ok(None) => {
+                        display.print_warning("No username is currently saved");
+                    }
+                    Err(e) => {
+                        display.print_error(&format!("Failed to read config: {}", e));
                     }
                 },
                 ConfigCommands::SetUser { username } => {
                     match config_manager.change_username(username.clone()) {
                         Ok(_) => {
                             display.print_success(&format!("Username set to: {}", username));
-                        },
+                        }
                         Err(e) => {
                             display.print_error(&format!("Failed to save username: {}", e));
                         }
                     }
-                },
-                ConfigCommands::Show => {
-                    match config_manager.get_all_config() {
-                        Ok(config) => {
-                            display.print_info("Current Configuration:");
-                            println!("  Username: {}", config.username.unwrap_or_else(|| "Not set".to_string()));
-                            println!("  Color mode: {:?}", config.color_mode);
-                            println!("  Display mode: {:?}", config.display_mode);
-                        },
-                        Err(e) => {
-                            display.print_error(&format!("Failed to read config: {}", e));
-                        }
+                }
+                ConfigCommands::Show => match config_manager.get_all_config() {
+                    Ok(config) => {
+                        display.print_info("Current Configuration:");
+                        println!(
+                            "  Username: {}",
+                            config.username.unwrap_or_else(|| "Not set".to_string())
+                        );
+                        println!("  Color mode: {:?}", config.color_mode);
+                        println!("  Display mode: {:?}", config.display_mode);
+                    }
+                    Err(e) => {
+                        display.print_error(&format!("Failed to read config: {}", e));
                     }
                 },
                 ConfigCommands::SwitchColor { mode } => {
@@ -288,12 +343,12 @@ async fn main() {
                     match config_manager.set_color_mode(color_mode) {
                         Ok(_) => {
                             display.print_success(&format!("Color mode switched to: {:?}", mode));
-                        },
+                        }
                         Err(e) => {
                             display.print_error(&format!("Failed to update color mode: {}", e));
                         }
                     }
-                },
+                }
                 ConfigCommands::SetMode { mode } => {
                     let display_mode = match mode {
                         DisplayModeArg::Pixelated => DisplayMode::Pixelated,
@@ -302,14 +357,14 @@ async fn main() {
                     match config_manager.set_display_mode(display_mode) {
                         Ok(_) => {
                             display.print_success(&format!("Display mode set to: {:?}", mode));
-                        },
+                        }
                         Err(e) => {
                             display.print_error(&format!("Failed to update display mode: {}", e));
                         }
                     }
-                },
+                }
             }
-        },
+        }
 
         Commands::Browse { username } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
@@ -322,25 +377,25 @@ async fn main() {
             if let Err(e) = tui::run_tui(&actual_username).await {
                 display.print_error(&format!("TUI failed: {}", e));
             }
-        },
+        }
     }
 }
 
 fn filter_entries(
-    mut profile: lbxd::models::UserProfile, 
-    date_filter: Option<String>, 
-    rated_only: bool, 
-    reviewed_only: bool
+    mut profile: lbxd::models::UserProfile,
+    date_filter: Option<String>,
+    rated_only: bool,
+    reviewed_only: bool,
 ) -> lbxd::models::UserProfile {
     profile.entries.retain(|entry| {
         if rated_only && entry.rating.is_none() {
             return false;
         }
-        
+
         if reviewed_only && entry.review.is_none() {
             return false;
         }
-        
+
         if let Some(ref date_str) = date_filter {
             if let Ok(filter_date) = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
                 if let Some(watched_date) = entry.watched_date {
@@ -353,21 +408,25 @@ fn filter_entries(
                 }
             }
         }
-        
+
         true
     });
-    
+
     profile
 }
 
-async fn resolve_username(username: &str, config_manager: &ConfigManager, display: &DisplayEngine) -> Option<String> {
+async fn resolve_username(
+    username: &str,
+    config_manager: &ConfigManager,
+    display: &DisplayEngine,
+) -> Option<String> {
     if username == "me" {
         match config_manager.get_username() {
             Ok(Some(saved_username)) => Some(saved_username),
             Ok(None) => {
                 display.print_error("No username saved. Please provide a username or run a command with your actual username first.");
                 None
-            },
+            }
             Err(_) => {
                 display.print_error("Error reading configuration.");
                 None
@@ -392,7 +451,7 @@ fn show_version_info() {
     ███████╗██████╔╝██╔╝ ██╗██████╔╝
     ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═════╝ 
     "#;
-    
+
     println!("{}", ascii_art);
     println!("    Letterboxd in your terminal");
     println!();
