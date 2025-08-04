@@ -12,8 +12,8 @@
 class Lbxd < Formula
   desc "Beautiful command-line tool for Letterboxd - view activity, browse collections, and explore movies"
   homepage "https://github.com/Pranav-Karra-3301/lbxd"
-  url "https://github.com/Pranav-Karra-3301/lbxd/archive/refs/tags/v2.2.0.tar.gz"
-  sha256 "2729a2fbab7322a872b3fc2a6656f7cfb9eb84d6535178932cb2ad62329e2b56"
+  url "https://github.com/Pranav-Karra-3301/lbxd/archive/refs/tags/v2.2.2.tar.gz"
+  sha256 "6cdde87de8128a39d2a419c084d8a37030b2515aef37580aec6a1e7ea149b6e5"
   license "MIT"
 
   depends_on "rust" => :build
@@ -40,7 +40,7 @@ class Lbxd < Formula
   test do
     # Test that the binary runs and shows version
     output = shell_output("#{bin}/lbxd --version")
-    assert_match "lbxd 2.2.0", output
+    assert_match "lbxd 2.2.2", output
 
     # Test that Python dependencies are accessible
     python_cmd = Formula["python@3.12"].opt_bin/"python3"
