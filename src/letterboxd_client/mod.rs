@@ -1,16 +1,16 @@
 use anyhow::Result;
-use serde_json::Value;
-use tokio::sync::mpsc;
-use tokio::process::Command;
-use std::process::Stdio;
 use chrono::Datelike;
+use serde_json::Value;
+use std::process::Stdio;
+use tokio::process::Command;
+use tokio::sync::mpsc;
 
-use crate::profile::{
-    ComprehensiveProfile, DetailedMovie, UserMovieEntry, FavoriteFilm,
-    LoadingProgress, LoadingStage, EnhancedStatistics, UserStatistics,
-    GenreStats, DirectorStats, YearlyBreakdown, RatingDistribution, ViewingPattern
-};
 use crate::omdb::OMDBClient;
+use crate::profile::{
+    ComprehensiveProfile, DetailedMovie, DirectorStats, EnhancedStatistics, FavoriteFilm,
+    GenreStats, LoadingProgress, LoadingStage, RatingDistribution, UserMovieEntry, UserStatistics,
+    ViewingPattern, YearlyBreakdown,
+};
 
 pub struct LetterboxdClient {}
 
@@ -71,16 +71,20 @@ impl LetterboxdClient {
         }
 
         // Convert the JSON data to our Rust structures
-        let mut comprehensive_profile = self.convert_user_data_to_profile(user_data, username).await?;
-        
+        let mut comprehensive_profile = self
+            .convert_user_data_to_profile(user_data, username)
+            .await?;
+
         // Add watchlist data and update pagination info
-        let watchlist_movies = self.convert_watchlist_to_movies(watchlist_data.clone()).await?;
+        let watchlist_movies = self
+            .convert_watchlist_to_movies(watchlist_data.clone())
+            .await?;
         let total_watchlist_available = if let Some(entries_array) = watchlist_data.as_array() {
             entries_array.len()
         } else {
             0
         };
-        
+
         comprehensive_profile.watchlist = watchlist_movies;
         comprehensive_profile.watchlist_loaded = comprehensive_profile.watchlist.len();
         comprehensive_profile.total_watchlist_available = total_watchlist_available;
@@ -159,10 +163,13 @@ except ImportError:
             .spawn()?;
 
         let output = child.wait_with_output().await?;
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow::anyhow!("Failed to install letterboxdpy: {}", stderr));
+            return Err(anyhow::anyhow!(
+                "Failed to install letterboxdpy: {}",
+                stderr
+            ));
         }
 
         // Don't print the output to avoid cluttering the loading screen
@@ -170,7 +177,8 @@ except ImportError:
     }
 
     async fn get_user_data(&self, username: &str) -> Result<Value> {
-        let python_script = format!(r#"
+        let python_script = format!(
+            r#"
 import json
 from letterboxdpy.user import User
 from letterboxdpy.movie import Movie
@@ -235,7 +243,9 @@ except Exception as e:
     print(f"Error: {{e}}")
     import traceback
     traceback.print_exc()
-"#, username);
+"#,
+            username
+        );
 
         let child = Command::new("python3")
             .arg("-c")
@@ -245,7 +255,7 @@ except Exception as e:
             .spawn()?;
 
         let output = child.wait_with_output().await?;
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!("Failed to fetch user data: {}", stderr));
@@ -282,7 +292,11 @@ except Exception as e:
         // Get real diary entries from letterboxdpy (limit to 10 initially for performance)
         let all_diary_entries = self.extract_diary_entries(&user_data["diary_entries"])?;
         let total_movies_available = all_diary_entries.len();
-        let all_movies = all_diary_entries.iter().take(10).cloned().collect::<Vec<_>>();
+        let all_movies = all_diary_entries
+            .iter()
+            .take(10)
+            .cloned()
+            .collect::<Vec<_>>();
         let recent_activity = all_movies.iter().take(10).cloned().collect();
 
         // No lists support
@@ -320,13 +334,13 @@ except Exception as e:
 
     fn extract_favorites(&self, favorites_data: &Value) -> Result<Vec<FavoriteFilm>> {
         let mut favorites = Vec::new();
-        
+
         if let Some(favorites_obj) = favorites_data.as_object() {
             for (_id, movie_data) in favorites_obj {
                 let title = movie_data["name"].as_str().unwrap_or("Unknown").to_string();
                 let slug = movie_data["slug"].as_str().unwrap_or("");
                 let letterboxd_url = format!("https://letterboxd.com/film/{}", slug);
-                
+
                 favorites.push(FavoriteFilm {
                     title,
                     year: None,
@@ -335,35 +349,40 @@ except Exception as e:
                 });
             }
         }
-        
+
         Ok(favorites)
     }
 
     fn extract_diary_entries(&self, diary_data: &Value) -> Result<Vec<UserMovieEntry>> {
         let mut movies = Vec::new();
-        
+
         if let Some(entries_array) = diary_data.as_array() {
             for entry in entries_array {
                 let title = entry["title"].as_str().unwrap_or("Unknown").to_string();
                 let slug = entry["slug"].as_str().unwrap_or("");
                 let month = entry["month"].as_u64().unwrap_or(7) as u32;
-                let day = entry["day"].as_str().unwrap_or("1").parse::<u32>().unwrap_or(1);
+                let day = entry["day"]
+                    .as_str()
+                    .unwrap_or("1")
+                    .parse::<u32>()
+                    .unwrap_or(1);
                 let year = entry["year"].as_u64().map(|y| y as u16);
                 let director = entry["director"].as_str().map(String::from);
                 let runtime = entry["runtime"].as_u64().map(|r| r as u16);
                 let letterboxd_rating = entry["rating"].as_f64().map(|r| r as f32);
                 let description = entry["description"].as_str().map(String::from);
-                
+
                 // Extract genres
                 let genres = if let Some(genres_array) = entry["genres"].as_array() {
-                    genres_array.iter()
+                    genres_array
+                        .iter()
                         .filter_map(|g| g.as_str())
                         .map(String::from)
                         .collect()
                 } else {
                     Vec::new()
                 };
-                
+
                 // Create detailed movie entry from letterboxdpy data
                 let movie = DetailedMovie {
                     title: title.clone(),
@@ -386,17 +405,17 @@ except Exception as e:
                     plot: None,
                     awards: None,
                 };
-                
+
                 // Create a watched date from month/day (assuming current year)
                 let watched_date = chrono::Utc::now()
                     .with_month(month)
                     .and_then(|d| d.with_day(day))
                     .unwrap_or(chrono::Utc::now());
-                
+
                 movies.push(UserMovieEntry {
                     movie,
                     user_rating: None, // Could extract from letterboxdpy later
-                    review: None, 
+                    review: None,
                     watched_date: Some(watched_date),
                     liked: false,
                     rewatched: false,
@@ -404,51 +423,50 @@ except Exception as e:
                 });
             }
         }
-        
+
         Ok(movies)
     }
 
     fn calculate_enhanced_stats(&self, movies: &[UserMovieEntry]) -> Result<EnhancedStatistics> {
         let total_films = movies.len() as u32;
-        
+
         // Calculate basic statistics
-        let total_runtime: u32 = movies.iter()
+        let total_runtime: u32 = movies
+            .iter()
             .filter_map(|m| m.movie.runtime)
             .map(|r| r as u32)
             .sum();
-        
+
         let total_viewing_time_hours = total_runtime as f32 / 60.0;
-        let average_film_length = if total_films > 0 { 
-            total_runtime as f32 / total_films as f32 
-        } else { 
-            0.0 
+        let average_film_length = if total_films > 0 {
+            total_runtime as f32 / total_films as f32
+        } else {
+            0.0
         };
-        
+
         // Calculate ratings
-        let ratings: Vec<f32> = movies.iter()
-            .filter_map(|m| m.user_rating)
-            .collect();
+        let ratings: Vec<f32> = movies.iter().filter_map(|m| m.user_rating).collect();
         let average_rating = if !ratings.is_empty() {
             ratings.iter().sum::<f32>() / ratings.len() as f32
         } else {
             0.0
         };
-        
+
         // Genre analysis (now with real data!)
         let genre_breakdown = self.calculate_real_genre_stats(movies);
-        
+
         // Director analysis (now with real data!)
         let director_stats = self.calculate_real_director_stats(movies);
-        
+
         // Rating distribution
         let rating_distribution = self.calculate_rating_distribution(&ratings);
-        
+
         // Yearly breakdown
         let yearly_breakdown = self.calculate_yearly_breakdown(movies);
-        
+
         // Viewing patterns
         let viewing_patterns = self.calculate_viewing_patterns(movies);
-        
+
         Ok(EnhancedStatistics {
             basic_stats: UserStatistics {
                 total_viewing_time_hours,
@@ -475,22 +493,26 @@ except Exception as e:
 
     fn calculate_real_genre_stats(&self, movies: &[UserMovieEntry]) -> Vec<GenreStats> {
         use std::collections::HashMap;
-        
+
         let mut genre_counts = HashMap::new();
         let mut genre_ratings = HashMap::new();
-        
+
         for movie in movies {
             for genre in &movie.movie.genres {
                 *genre_counts.entry(genre.clone()).or_insert(0) += 1;
                 if let Some(rating) = movie.user_rating {
-                    genre_ratings.entry(genre.clone()).or_insert(Vec::new()).push(rating);
+                    genre_ratings
+                        .entry(genre.clone())
+                        .or_insert(Vec::new())
+                        .push(rating);
                 }
             }
         }
-        
+
         let total_films = movies.len() as f32;
         let empty_ratings = Vec::new();
-        let mut genre_stats: Vec<GenreStats> = genre_counts.into_iter()
+        let mut genre_stats: Vec<GenreStats> = genre_counts
+            .into_iter()
             .map(|(name, count)| {
                 let percentage = (count as f32 / total_films) * 100.0;
                 let ratings = genre_ratings.get(&name).unwrap_or(&empty_ratings);
@@ -499,9 +521,9 @@ except Exception as e:
                 } else {
                     0.0
                 };
-                
+
                 let emoji = self.get_genre_emoji(&name);
-                
+
                 GenreStats {
                     name,
                     count,
@@ -511,7 +533,7 @@ except Exception as e:
                 }
             })
             .collect();
-        
+
         genre_stats.sort_by(|a, b| b.count.cmp(&a.count));
         genre_stats.truncate(10);
         genre_stats
@@ -519,12 +541,15 @@ except Exception as e:
 
     fn calculate_real_director_stats(&self, movies: &[UserMovieEntry]) -> Vec<DirectorStats> {
         use std::collections::HashMap;
-        
+
         let mut director_data: HashMap<String, (u32, Vec<f32>, Vec<String>)> = HashMap::new();
-        
+
         for movie in movies {
             if let Some(ref director) = movie.movie.director {
-                let entry = director_data.entry(director.clone()).or_insert((0, Vec::new(), Vec::new()));
+                let entry =
+                    director_data
+                        .entry(director.clone())
+                        .or_insert((0, Vec::new(), Vec::new()));
                 entry.0 += 1;
                 if let Some(rating) = movie.user_rating {
                     entry.1.push(rating);
@@ -532,25 +557,27 @@ except Exception as e:
                 entry.2.push(movie.movie.title.clone());
             }
         }
-        
-        let mut director_stats: Vec<DirectorStats> = director_data.into_iter()
+
+        let mut director_stats: Vec<DirectorStats> = director_data
+            .into_iter()
             .map(|(name, (film_count, ratings, titles))| {
                 let average_rating = if !ratings.is_empty() {
                     ratings.iter().sum::<f32>() / ratings.len() as f32
                 } else {
                     0.0
                 };
-                
+
                 let favorite_film = if !ratings.is_empty() {
                     let max_rating = ratings.iter().fold(0.0f32, |a, &b| a.max(b));
-                    titles.iter()
+                    titles
+                        .iter()
                         .zip(ratings.iter())
                         .find(|(_, &rating)| rating == max_rating)
                         .map(|(title, _)| title.clone())
                 } else {
                     titles.first().cloned()
                 };
-                
+
                 DirectorStats {
                     name,
                     film_count,
@@ -559,7 +586,7 @@ except Exception as e:
                 }
             })
             .collect();
-        
+
         director_stats.sort_by(|a, b| b.film_count.cmp(&a.film_count));
         director_stats.truncate(10);
         director_stats
@@ -567,37 +594,40 @@ except Exception as e:
 
     fn calculate_rating_distribution(&self, ratings: &[f32]) -> Vec<RatingDistribution> {
         use std::collections::HashMap;
-        
+
         let mut distribution = HashMap::new();
         for &rating in ratings {
             let rounded = (rating * 2.0).round() / 2.0;
             let key = format!("{:.1}", rounded);
             *distribution.entry(key).or_insert(0) += 1;
         }
-        
+
         let total = ratings.len() as f32;
-        let mut result: Vec<RatingDistribution> = distribution.into_iter()
+        let mut result: Vec<RatingDistribution> = distribution
+            .into_iter()
             .map(|(rating_str, count)| RatingDistribution {
                 rating: rating_str.parse::<f32>().unwrap_or(0.0),
                 count,
                 percentage: (count as f32 / total) * 100.0,
             })
             .collect();
-        
+
         result.sort_by(|a, b| a.rating.partial_cmp(&b.rating).unwrap());
         result
     }
 
     fn calculate_yearly_breakdown(&self, movies: &[UserMovieEntry]) -> Vec<YearlyBreakdown> {
-        use std::collections::HashMap;
         use chrono::Datelike;
-        
+        use std::collections::HashMap;
+
         let mut yearly_data: HashMap<u16, (u32, u32, Vec<f32>, Vec<String>)> = HashMap::new();
-        
+
         for movie in movies {
             if let Some(date) = movie.watched_date {
                 let watch_year = date.year() as u16;
-                let entry = yearly_data.entry(watch_year).or_insert((0, 0, Vec::new(), Vec::new()));
+                let entry = yearly_data
+                    .entry(watch_year)
+                    .or_insert((0, 0, Vec::new(), Vec::new()));
                 entry.0 += 1;
                 entry.1 += movie.movie.runtime.unwrap_or(0) as u32;
                 if let Some(rating) = movie.user_rating {
@@ -606,25 +636,27 @@ except Exception as e:
                 entry.3.push(movie.movie.title.clone());
             }
         }
-        
-        let mut yearly_breakdown: Vec<YearlyBreakdown> = yearly_data.into_iter()
+
+        let mut yearly_breakdown: Vec<YearlyBreakdown> = yearly_data
+            .into_iter()
             .map(|(year, (film_count, total_runtime, ratings, titles))| {
                 let average_rating = if !ratings.is_empty() {
                     ratings.iter().sum::<f32>() / ratings.len() as f32
                 } else {
                     0.0
                 };
-                
+
                 let favorite_film = if !ratings.is_empty() {
                     let max_rating = ratings.iter().fold(0.0f32, |a, &b| a.max(b));
-                    titles.iter()
+                    titles
+                        .iter()
                         .zip(ratings.iter())
                         .find(|(_, &rating)| rating == max_rating)
                         .map(|(title, _)| title.clone())
                 } else {
                     titles.first().cloned()
                 };
-                
+
                 YearlyBreakdown {
                     year,
                     film_count,
@@ -635,32 +667,33 @@ except Exception as e:
                 }
             })
             .collect();
-        
+
         yearly_breakdown.sort_by(|a, b| b.year.cmp(&a.year));
         yearly_breakdown
     }
 
     fn calculate_viewing_patterns(&self, movies: &[UserMovieEntry]) -> Vec<ViewingPattern> {
-        use std::collections::HashMap;
         use chrono::Datelike;
-        
+        use std::collections::HashMap;
+
         let mut monthly_counts = HashMap::new();
-        
+
         for movie in movies {
             if let Some(date) = movie.watched_date {
                 let month = date.month();
                 *monthly_counts.entry(month).or_insert(0) += 1;
             }
         }
-        
-        let mut patterns: Vec<ViewingPattern> = monthly_counts.into_iter()
+
+        let mut patterns: Vec<ViewingPattern> = monthly_counts
+            .into_iter()
             .map(|(month, films_watched)| ViewingPattern {
                 month,
                 films_watched,
                 busiest_day: None,
             })
             .collect();
-        
+
         patterns.sort_by_key(|p| p.month);
         patterns
     }
@@ -690,7 +723,8 @@ except Exception as e:
     }
 
     async fn get_watchlist_data(&self, username: &str) -> Result<Value> {
-        let python_script = format!(r#"
+        let python_script = format!(
+            r#"
 import json
 from letterboxdpy.user import User
 
@@ -713,7 +747,9 @@ except Exception as e:
     print(f"Error: {{e}}")
     import traceback
     traceback.print_exc()
-"#, username);
+"#,
+            username
+        );
 
         let child = Command::new("python3")
             .arg("-c")
@@ -723,10 +759,13 @@ except Exception as e:
             .spawn()?;
 
         let output = child.wait_with_output().await?;
-        
+
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow::anyhow!("Failed to fetch watchlist data: {}", stderr));
+            return Err(anyhow::anyhow!(
+                "Failed to fetch watchlist data: {}",
+                stderr
+            ));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -734,22 +773,25 @@ except Exception as e:
         Ok(watchlist_data)
     }
 
-    async fn convert_watchlist_to_movies(&self, watchlist_data: Value) -> Result<Vec<DetailedMovie>> {
+    async fn convert_watchlist_to_movies(
+        &self,
+        watchlist_data: Value,
+    ) -> Result<Vec<DetailedMovie>> {
         let mut movies = Vec::new();
-        
+
         if let Some(entries_array) = watchlist_data.as_array() {
             // Limit to first 10 entries for performance
             for entry in entries_array.iter().take(10) {
                 let title = entry["title"].as_str().unwrap_or("Unknown").to_string();
                 let slug = entry["slug"].as_str().unwrap_or("");
-                
+
                 let movie = DetailedMovie {
                     title: title.clone(),
-                    year: None, // Will be filled by OMDB
-                    director: None, // Will be filled by OMDB
+                    year: None,         // Will be filled by OMDB
+                    director: None,     // Will be filled by OMDB
                     genres: Vec::new(), // Will be filled by OMDB
-                    runtime: None, // Will be filled by OMDB
-                    poster_url: None, // Will be filled by TMDB
+                    runtime: None,      // Will be filled by OMDB
+                    poster_url: None,   // Will be filled by TMDB
                     letterboxd_url: format!("https://letterboxd.com/film/{}", slug),
                     tmdb_url: None,
                     cast: Vec::new(),
@@ -764,41 +806,55 @@ except Exception as e:
                     plot: None,
                     awards: None,
                 };
-                
+
                 movies.push(movie);
             }
         }
-        
+
         Ok(movies)
     }
 
-    async fn enrich_with_omdb(&self, mut profile: ComprehensiveProfile) -> Result<ComprehensiveProfile> {
+    async fn enrich_with_omdb(
+        &self,
+        mut profile: ComprehensiveProfile,
+    ) -> Result<ComprehensiveProfile> {
         let omdb_client = OMDBClient::new();
-        
+
         // Enrich recent activity movies (limit to 10 to avoid rate limits)
         for entry in profile.recent_activity.iter_mut().take(10) {
-            if let Ok(Some(omdb_movie)) = omdb_client.get_movie_by_title(&entry.movie.title, entry.movie.year).await {
+            if let Ok(Some(omdb_movie)) = omdb_client
+                .get_movie_by_title(&entry.movie.title, entry.movie.year)
+                .await
+            {
                 entry.movie.imdb_rating = omdb_client.get_imdb_rating(&omdb_movie);
-                entry.movie.rotten_tomatoes_rating = omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
+                entry.movie.rotten_tomatoes_rating =
+                    omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
                 entry.movie.metacritic_rating = omdb_client.get_metacritic_rating(&omdb_movie);
                 entry.movie.imdb_id = omdb_movie.imdb_id.clone();
                 entry.movie.release_date = omdb_movie.released.clone();
                 entry.movie.plot = omdb_movie.plot.clone();
                 entry.movie.awards = omdb_movie.awards.clone();
             }
-            
+
             // Small delay to respect rate limits
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
-        
+
         // Enrich first 10 watchlist movies
         for movie in profile.watchlist.iter_mut().take(10) {
-            if let Ok(Some(omdb_movie)) = omdb_client.get_movie_by_title(&movie.title, movie.year).await {
+            if let Ok(Some(omdb_movie)) = omdb_client
+                .get_movie_by_title(&movie.title, movie.year)
+                .await
+            {
                 movie.year = omdb_movie.year.parse().ok();
                 movie.director = omdb_movie.director.clone();
-                movie.runtime = omdb_movie.runtime.as_ref()
+                movie.runtime = omdb_movie
+                    .runtime
+                    .as_ref()
                     .and_then(|r| r.trim_end_matches(" min").parse().ok());
-                movie.genres = omdb_movie.genre.as_ref()
+                movie.genres = omdb_movie
+                    .genre
+                    .as_ref()
                     .map(|g| g.split(", ").map(String::from).collect())
                     .unwrap_or_default();
                 movie.imdb_rating = omdb_client.get_imdb_rating(&omdb_movie);
@@ -810,63 +866,77 @@ except Exception as e:
                 movie.awards = omdb_movie.awards.clone();
                 movie.synopsis = omdb_movie.plot.clone();
             }
-            
+
             // Small delay to respect rate limits
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
-        
+
         Ok(profile)
     }
 
-    pub async fn load_more_movies(&self, username: &str, offset: usize, limit: usize) -> Result<Vec<crate::profile::UserMovieEntry>> {
+    pub async fn load_more_movies(
+        &self,
+        username: &str,
+        offset: usize,
+        limit: usize,
+    ) -> Result<Vec<crate::profile::UserMovieEntry>> {
         // Get user data again to access all diary entries
         let user_data = self.get_user_data(username).await?;
-        
+
         // Extract all diary entries
         let all_diary_entries = self.extract_diary_entries(&user_data["diary_entries"])?;
-        
+
         // Return the requested slice
         let end_index = (offset + limit).min(all_diary_entries.len());
         if offset >= all_diary_entries.len() {
             return Ok(Vec::new());
         }
-        
+
         let mut batch = all_diary_entries[offset..end_index].to_vec();
-        
+
         // Enrich with OMDB data
         let omdb_client = crate::omdb::OMDBClient::new();
         for entry in batch.iter_mut() {
-            if let Ok(Some(omdb_movie)) = omdb_client.get_movie_by_title(&entry.movie.title, entry.movie.year).await {
+            if let Ok(Some(omdb_movie)) = omdb_client
+                .get_movie_by_title(&entry.movie.title, entry.movie.year)
+                .await
+            {
                 entry.movie.imdb_rating = omdb_client.get_imdb_rating(&omdb_movie);
-                entry.movie.rotten_tomatoes_rating = omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
+                entry.movie.rotten_tomatoes_rating =
+                    omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
                 entry.movie.metacritic_rating = omdb_client.get_metacritic_rating(&omdb_movie);
                 entry.movie.imdb_id = omdb_movie.imdb_id.clone();
                 entry.movie.release_date = omdb_movie.released.clone();
                 entry.movie.plot = omdb_movie.plot.clone();
                 entry.movie.awards = omdb_movie.awards.clone();
             }
-            
+
             // Small delay to respect rate limits
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
-        
+
         Ok(batch)
     }
 
-    pub async fn load_more_watchlist(&self, username: &str, offset: usize, limit: usize) -> Result<Vec<crate::profile::DetailedMovie>> {
+    pub async fn load_more_watchlist(
+        &self,
+        username: &str,
+        offset: usize,
+        limit: usize,
+    ) -> Result<Vec<crate::profile::DetailedMovie>> {
         // Get watchlist data again
         let watchlist_data = self.get_watchlist_data(username).await?;
-        
+
         if let Some(entries_array) = watchlist_data.as_array() {
             if offset >= entries_array.len() {
                 return Ok(Vec::new());
             }
-            
+
             let mut movies = Vec::new();
             for entry in entries_array.iter().skip(offset).take(limit) {
                 let title = entry["title"].as_str().unwrap_or("Unknown").to_string();
                 let slug = entry["slug"].as_str().unwrap_or("");
-                
+
                 let movie = crate::profile::DetailedMovie {
                     title: title.clone(),
                     year: None,
@@ -888,23 +958,31 @@ except Exception as e:
                     plot: None,
                     awards: None,
                 };
-                
+
                 movies.push(movie);
             }
-            
+
             // Enrich with OMDB data
             let omdb_client = crate::omdb::OMDBClient::new();
             for movie in movies.iter_mut() {
-                if let Ok(Some(omdb_movie)) = omdb_client.get_movie_by_title(&movie.title, movie.year).await {
+                if let Ok(Some(omdb_movie)) = omdb_client
+                    .get_movie_by_title(&movie.title, movie.year)
+                    .await
+                {
                     movie.year = omdb_movie.year.parse().ok();
                     movie.director = omdb_movie.director.clone();
-                    movie.runtime = omdb_movie.runtime.as_ref()
+                    movie.runtime = omdb_movie
+                        .runtime
+                        .as_ref()
                         .and_then(|r| r.trim_end_matches(" min").parse().ok());
-                    movie.genres = omdb_movie.genre.as_ref()
+                    movie.genres = omdb_movie
+                        .genre
+                        .as_ref()
                         .map(|g| g.split(", ").map(String::from).collect())
                         .unwrap_or_default();
                     movie.imdb_rating = omdb_client.get_imdb_rating(&omdb_movie);
-                    movie.rotten_tomatoes_rating = omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
+                    movie.rotten_tomatoes_rating =
+                        omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
                     movie.metacritic_rating = omdb_client.get_metacritic_rating(&omdb_movie);
                     movie.imdb_id = omdb_movie.imdb_id.clone();
                     movie.release_date = omdb_movie.released.clone();
@@ -912,11 +990,11 @@ except Exception as e:
                     movie.awards = omdb_movie.awards.clone();
                     movie.synopsis = omdb_movie.plot.clone();
                 }
-                
+
                 // Small delay to respect rate limits
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
-            
+
             Ok(movies)
         } else {
             Ok(Vec::new())

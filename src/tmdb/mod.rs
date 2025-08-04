@@ -1,13 +1,13 @@
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use reqwest;
 use colored::*;
+use reqwest;
+use serde::{Deserialize, Serialize};
 use std::env;
 
 // Default API key - users can override with TMDB_API_KEY environment variable
 const DEFAULT_TMDB_API_KEY: &str = "bce5788c33b687c14b610654579ff6aa";
 const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
-const TMDB_IMAGE_BASE_URL: &str = "https://image.tmdb.org/t/p/w780";  // Higher quality images
+const TMDB_IMAGE_BASE_URL: &str = "https://image.tmdb.org/t/p/w780"; // Higher quality images
 const TMDB_IMAGE_ORIGINAL: &str = "https://image.tmdb.org/t/p/original";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,7 +35,7 @@ impl TMDBClient {
             .timeout(std::time::Duration::from_secs(10))
             .build()
             .unwrap_or_default();
-            
+
         Self { client }
     }
 
@@ -48,7 +48,11 @@ impl TMDBClient {
         self.search_movie_with_year(query, None).await
     }
 
-    pub async fn search_movie_with_year(&self, query: &str, year: Option<i32>) -> Result<Option<TMDBMovie>> {
+    pub async fn search_movie_with_year(
+        &self,
+        query: &str,
+        year: Option<i32>,
+    ) -> Result<Option<TMDBMovie>> {
         let api_key = Self::get_api_key();
         let mut url = format!(
             "{}/search/movie?api_key={}&query={}",
@@ -62,13 +66,16 @@ impl TMDBClient {
         }
 
         let response = self.client.get(&url).send().await?;
-        
+
         if !response.status().is_success() {
-            return Err(anyhow::anyhow!("TMDB API request failed: {}", response.status()));
+            return Err(anyhow::anyhow!(
+                "TMDB API request failed: {}",
+                response.status()
+            ));
         }
 
         let search_result: TMDBSearchResponse = response.json().await?;
-        
+
         Ok(search_result.results.into_iter().next())
     }
 
@@ -77,7 +84,10 @@ impl TMDBClient {
     }
 
     pub fn print_tmdb_attribution() {
-        println!("{}", "Data provided by The Movie Database (TMDB)".color("blue"));
+        println!(
+            "{}",
+            "Data provided by The Movie Database (TMDB)".color("blue")
+        );
     }
 }
 
@@ -94,13 +104,13 @@ impl TMDBMovie {
             .as_ref()
             .map(|path| format!("{}{}", TMDB_IMAGE_BASE_URL, path))
     }
-    
+
     pub fn get_high_quality_poster_url(&self) -> Option<String> {
         self.poster_path
             .as_ref()
             .map(|path| format!("{}{}", TMDB_IMAGE_BASE_URL, path))
     }
-    
+
     pub fn get_original_poster_url(&self) -> Option<String> {
         self.poster_path
             .as_ref()

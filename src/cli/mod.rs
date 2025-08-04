@@ -3,7 +3,9 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "lbxd")]
 #[command(about = "A beautiful command-line tool for Letterboxd")]
-#[command(long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Recent activity viewing with rich display\n◆ Movie search and filtering capabilities\n▲ TMDB integration for reliable data\n● Export functionality for data analysis\n◉ Smooth loading animations\n🎭 Interactive TUI for browsing complete collections\n\nDeveloped by https://pranavkarra.me")]
+#[command(
+    long_about = "LBXD - Letterboxd in your terminal\n\nA beautiful CLI tool featuring:\n★ Recent activity viewing with rich display\n◆ Movie search and filtering capabilities\n▲ TMDB integration for reliable data\n● Export functionality for data analysis\n◉ Smooth loading animations\n🎭 Interactive TUI for browsing complete collections\n\nDeveloped by https://pranavkarra.me"
+)]
 #[command(version)]
 pub struct Cli {
     #[arg(long, help = "Reconfigure settings through interactive setup")]

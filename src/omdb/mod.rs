@@ -1,8 +1,8 @@
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
-use std::time::Duration;
+use serde::{Deserialize, Serialize};
 use std::env;
+use std::time::Duration;
 
 // Default API key - users can override with OMDB_API_KEY environment variable
 const DEFAULT_OMDB_API_KEY: &str = "ad032cc2";
@@ -100,7 +100,7 @@ impl OMDBClient {
             .timeout(Duration::from_secs(10))
             .build()
             .expect("Failed to create HTTP client");
-            
+
         Self { client }
     }
 
@@ -109,10 +109,19 @@ impl OMDBClient {
         env::var("OMDB_API_KEY").unwrap_or_else(|_| DEFAULT_OMDB_API_KEY.to_string())
     }
 
-    pub async fn get_movie_by_title(&self, title: &str, year: Option<u16>) -> Result<Option<OMDBMovie>> {
+    pub async fn get_movie_by_title(
+        &self,
+        title: &str,
+        year: Option<u16>,
+    ) -> Result<Option<OMDBMovie>> {
         let api_key = Self::get_api_key();
-        let mut url = format!("{}?apikey={}&t={}", OMDB_BASE_URL, api_key, urlencoding::encode(title));
-        
+        let mut url = format!(
+            "{}?apikey={}&t={}",
+            OMDB_BASE_URL,
+            api_key,
+            urlencoding::encode(title)
+        );
+
         if let Some(year) = year {
             url.push_str(&format!("&y={}", year));
         }
@@ -127,10 +136,19 @@ impl OMDBClient {
         }
     }
 
-    pub async fn search_movies(&self, query: &str, year: Option<u16>) -> Result<Vec<OMDBSearchMovie>> {
+    pub async fn search_movies(
+        &self,
+        query: &str,
+        year: Option<u16>,
+    ) -> Result<Vec<OMDBSearchMovie>> {
         let api_key = Self::get_api_key();
-        let mut url = format!("{}?apikey={}&s={}", OMDB_BASE_URL, api_key, urlencoding::encode(query));
-        
+        let mut url = format!(
+            "{}?apikey={}&s={}",
+            OMDB_BASE_URL,
+            api_key,
+            urlencoding::encode(query)
+        );
+
         if let Some(year) = year {
             url.push_str(&format!("&y={}", year));
         }
@@ -161,12 +179,16 @@ impl OMDBClient {
 
     // Helper methods to extract specific ratings
     pub fn get_imdb_rating(&self, movie: &OMDBMovie) -> Option<f32> {
-        movie.imdb_rating.as_ref()
+        movie
+            .imdb_rating
+            .as_ref()
             .and_then(|rating| rating.parse::<f32>().ok())
     }
 
     pub fn get_rotten_tomatoes_rating(&self, movie: &OMDBMovie) -> Option<u8> {
-        movie.ratings.as_ref()?
+        movie
+            .ratings
+            .as_ref()?
             .iter()
             .find(|rating| rating.source == "Rotten Tomatoes")?
             .value
@@ -176,7 +198,9 @@ impl OMDBClient {
     }
 
     pub fn get_metacritic_rating(&self, movie: &OMDBMovie) -> Option<u8> {
-        movie.ratings.as_ref()?
+        movie
+            .ratings
+            .as_ref()?
             .iter()
             .find(|rating| rating.source == "Metacritic")?
             .value

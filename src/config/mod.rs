@@ -40,9 +40,9 @@ impl ConfigManager {
     pub fn new() -> Result<Self> {
         let config_dir = Self::get_config_dir()?;
         fs::create_dir_all(&config_dir)?;
-        
+
         let config_path = config_dir.join("config.json");
-        
+
         Ok(Self { config_path })
     }
 
@@ -52,9 +52,8 @@ impl ConfigManager {
         }
 
         let content = fs::read_to_string(&self.config_path)?;
-        let config: Config = serde_json::from_str(&content)
-            .unwrap_or_else(|_| Config::default());
-        
+        let config: Config = serde_json::from_str(&content).unwrap_or_else(|_| Config::default());
+
         Ok(config)
     }
 
@@ -115,9 +114,9 @@ impl ConfigManager {
     }
 
     fn get_config_dir() -> Result<PathBuf> {
-        let home_dir = dirs::home_dir()
-            .ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
-        
+        let home_dir =
+            dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not find home directory"))?;
+
         Ok(home_dir.join(".config").join("lbxd"))
     }
 }
