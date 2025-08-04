@@ -28,3 +28,5 @@ logs/
 # Build artifacts
 dist/
 build/
+
+*.code-workspace

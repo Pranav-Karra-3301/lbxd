@@ -2,13 +2,13 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>lbxd</id>
-    <version>2.1.1</version>
+    <version>2.2.0</version>
     <packageSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</packageSourceUrl>
     <owners>Pranav-Karra-3301</owners>
     <title>lbxd - Letterboxd CLI</title>
     <authors>Pranav Karra</authors>
     <projectUrl>https://github.com/Pranav-Karra-3301/lbxd</projectUrl>
-    <iconUrl>https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/assets/icon.png</iconUrl>
+    <iconUrl>https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/lbxd.png</iconUrl>
     <copyright>2025 Pranav Karra</copyright>
     <licenseUrl>https://github.com/Pranav-Karra-3301/lbxd/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>

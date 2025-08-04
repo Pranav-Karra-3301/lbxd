@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $packageName = 'lbxd'
 $toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url64 = 'https://github.com/Pranav-Karra-3301/lbxd/releases/download/v2.1.1/lbxd-windows-x86_64.exe.zip'
+$url64 = 'https://github.com/Pranav-Karra-3301/lbxd/releases/download/v2.2.0/lbxd-windows-x86_64.exe.zip'
 
 # Package parameters
 $packageArgs = @{
