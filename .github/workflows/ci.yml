@@ -26,7 +26,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    # FIX: Pin to stable SHA instead of master branch
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
@@ -35,9 +34,13 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
-        # FIX: Keep Python 3.12 explicit pin to prevent distutils/packaging issues
+        # Keep Python 3.12 explicit pin to prevent distutils/packaging issues
         # that arise with Python 3.13+ where distutils was removed from stdlib
         python-version: '3.12'
+
+    # Run cargo fmt check BEFORE restoring caches so formatting errors surface fast
+    - name: Check formatting
+      run: cargo fmt -- --check
 
     - name: Install Python dependencies
       run: |
@@ -45,10 +48,6 @@ jobs:
         # Install setuptools first to provide distutils functionality
         pip install setuptools
         pip install letterboxdpy
-
-    # FIX: Add cargo fmt check early to catch formatting issues
-    - name: Check formatting
-      run: cargo fmt -- --check
         
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -62,20 +61,19 @@ jobs:
         path: ~/.cargo/git
         key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
         
-    # FIX: Make cargo build cache OS/target-specific to avoid cross-OS clobbering
+    # Make cargo build cache key include runner.os, matrix.os, and matrix.rust
     - name: Cache cargo build
       uses: actions/cache@v4
       with:
         path: target
-        key: ${{ runner.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.os }}-${{ matrix.rust }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
         
     - name: Run tests
       run: cargo test --verbose
       
-    # FIX: Allow clippy to fail on beta/nightly without failing the entire job
+    # Enforce clippy warnings on stable with -D warnings, allow beta to continue on error
     - name: Run clippy
-      run: cargo clippy
-      # Only fail CI on stable Rust for clippy issues
+      run: cargo clippy --all-targets -- -D warnings
       continue-on-error: ${{ matrix.rust != 'stable' }}
 
     - name: Test build
