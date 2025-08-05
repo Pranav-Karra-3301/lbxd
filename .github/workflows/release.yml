@@ -63,12 +63,16 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         python -m pip install --upgrade pip
+        # Install setuptools first to provide distutils functionality
+        pip install setuptools
         pip install letterboxdpy
 
     - name: Install Python dependencies (Windows)
       if: runner.os == 'Windows'
       run: |
         python -m pip install --upgrade pip
+        # Install setuptools first to provide distutils functionality
+        pip install setuptools
         pip install letterboxdpy
 
     - name: Install 7zip (Windows)
