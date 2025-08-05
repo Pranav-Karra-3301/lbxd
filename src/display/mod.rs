@@ -11,6 +11,7 @@ use std::time::Duration;
 use terminal_size::{terminal_size, Height, Width};
 use tokio::time::interval;
 
+
 pub struct DisplayEngine {
     ascii_converter: AsciiConverter,
     tmdb_client: TMDBClient,
@@ -314,6 +315,7 @@ impl DisplayEngine {
     }
 
     // Unified function to display a movie with poster and metadata
+    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
     pub async fn display_movie_with_poster(
         &self,
         title: &str,
@@ -355,7 +357,7 @@ impl DisplayEngine {
             println!();
 
             // Display the ASCII art cleanly
-            println!("{}", ascii_art);
+            println!("{ascii_art}");
 
             println!();
             println!("{}", AsciiConverter::create_gradient_border(80, "─"));
@@ -383,7 +385,7 @@ impl DisplayEngine {
                                 .convert_poster_to_ascii(&url, width)
                                 .await
                             {
-                                Ok((art, _)) => println!("{}", art),
+                                Ok((art, _)) => println!("{art}"),
                                 Err(_) => {
                                     let (fallback_width, _) =
                                         AsciiConverter::get_optimal_poster_size(width, None);
@@ -407,10 +409,10 @@ impl DisplayEngine {
                     if let Some(url) = &poster_url {
                         match self
                             .ascii_converter
-                            .convert_poster_to_ascii(url, width)
+                            .convert_poster_to_ascii(&url, width)
                             .await
                         {
-                            Ok((art, _)) => println!("{}", art),
+                            Ok((art, _)) => println!("{art}"),
                             Err(_) => {
                                 let (fallback_width, _) =
                                     AsciiConverter::get_optimal_poster_size(width, None);
@@ -431,7 +433,7 @@ impl DisplayEngine {
 
         // Display movie metadata separately below the ASCII art
         let title_with_year = if let Some(year) = year {
-            format!("{} ({})", title, year)
+            format!("{title} ({year})")
         } else {
             title.to_string()
         };
@@ -689,7 +691,7 @@ impl DisplayEngine {
             let ascii_art = if let Some(url) = poster_url {
                 match self
                     .ascii_converter
-                    .convert_poster_to_ascii(url, width)
+                    .convert_poster_to_ascii(&url, width)
                     .await
                 {
                     Ok((art, _aspect_ratio)) => art,
@@ -772,7 +774,7 @@ impl DisplayEngine {
                     }
                 }
 
-                let rating_str = format!("{} ({:.1})", rating_display, rating);
+                let rating_str = format!("{rating_display} ({rating:.1})");
                 let max_rating_width = width as usize + 10; // Account for ANSI codes
                 let truncated_rating = if rating_str.chars().count() > max_rating_width {
                     format!("{}...", &rating_str[..max_rating_width.saturating_sub(3)])

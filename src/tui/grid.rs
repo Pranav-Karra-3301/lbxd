@@ -30,6 +30,12 @@ pub enum MovieGridAction {
     LoadPoster(String), // movie title
 }
 
+impl Default for MovieGrid {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MovieGrid {
     pub fn new() -> Self {
         let mut state = ListState::default();

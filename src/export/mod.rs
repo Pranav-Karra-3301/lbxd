@@ -6,6 +6,12 @@ use std::fs;
 
 pub struct ExportManager;
 
+impl Default for ExportManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExportManager {
     pub fn new() -> Self {
         Self

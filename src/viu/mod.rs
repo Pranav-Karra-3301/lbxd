@@ -7,6 +7,12 @@ pub struct ViuViewer {
     client: reqwest::Client,
 }
 
+impl Default for ViuViewer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ViuViewer {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()

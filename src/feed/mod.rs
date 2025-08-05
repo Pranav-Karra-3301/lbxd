@@ -9,6 +9,12 @@ pub struct FeedParser {
     client: reqwest::Client,
 }
 
+impl Default for FeedParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeedParser {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()

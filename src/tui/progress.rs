@@ -83,16 +83,14 @@ impl ProgressBar {
     }
 
     fn get_lbxd_ascii_art(&self) -> String {
-        format!(
-            r#"
+        r#"
     ██╗     ██████╗ ██╗  ██╗██████╗ 
     ██║     ██╔══██╗╚██╗██╔╝██╔══██╗
     ██║     ██████╔╝ ╚███╔╝ ██║  ██║
     ██║     ██╔══██╗ ██╔██╗ ██║  ██║
     ███████╗██████╔╝██╔╝ ██╗██████╔╝
     ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═════╝ 
-            "#
-        )
+            "#.to_string()
     }
 
     fn get_animated_loading_message(&self) -> &'static str {
@@ -116,6 +114,12 @@ impl ProgressBar {
 pub struct LoadingSpinner {
     frames: Vec<&'static str>,
     current_frame: usize,
+}
+
+impl Default for LoadingSpinner {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LoadingSpinner {

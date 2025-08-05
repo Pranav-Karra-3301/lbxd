@@ -17,6 +17,12 @@ pub struct AppStyles {
     pub letterboxd_blue: Color,
 }
 
+impl Default for AppStyles {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppStyles {
     pub fn new() -> Self {
         Self {

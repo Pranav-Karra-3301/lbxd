@@ -11,6 +11,12 @@ pub struct AsciiConverter {
     client: reqwest::Client,
 }
 
+impl Default for AsciiConverter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AsciiConverter {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()

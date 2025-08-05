@@ -29,6 +29,12 @@ pub struct TMDBClient {
     client: reqwest::Client,
 }
 
+impl Default for TMDBClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TMDBClient {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()

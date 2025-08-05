@@ -13,6 +13,12 @@ pub struct BatchResult {
     pub tmdb_movie: Option<crate::tmdb::TMDBMovie>,
 }
 
+impl Default for BatchLoader {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BatchLoader {
     pub fn new() -> Self {
         Self

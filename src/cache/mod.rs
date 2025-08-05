@@ -18,7 +18,7 @@ impl CacheManager {
     }
 
     pub fn get_cached_profile(&self, username: &str) -> Option<UserProfile> {
-        let cache_file = self.cache_dir.join(format!("{}.json", username));
+        let cache_file = self.cache_dir.join(format!("{username}.json"));
 
         if !cache_file.exists() {
             return None;
