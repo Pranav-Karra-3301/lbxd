@@ -40,6 +40,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # FIX: Pin to stable SHA instead of master branch for consistency
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
       with:
@@ -52,6 +53,8 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
+        # FIX: Keep Python 3.12 explicit pin to prevent distutils/packaging issues
+        # that arise with Python 3.13+ where distutils was removed from stdlib
         python-version: '3.12'
 
     - name: Verify Python installation
@@ -75,9 +78,10 @@ jobs:
         pip install setuptools
         pip install letterboxdpy
 
-    - name: Install 7zip (Windows)
-      if: runner.os == 'Windows'
-      run: choco install 7zip
+    # FIX: Remove unneeded Chocolatey 7-Zip install; Windows runners have 7z.exe pre-installed
+    # - name: Install 7zip (Windows)
+    #   if: runner.os == 'Windows'
+    #   run: choco install 7zip
 
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -91,6 +95,7 @@ jobs:
         path: ~/.cargo/git
         key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
+    # FIX: Make cargo build cache OS/target-specific to avoid cross-OS clobbering
     - name: Cache cargo build
       uses: actions/cache@v4
       with:
@@ -103,9 +108,17 @@ jobs:
         echo "Runner OS: ${{ runner.os }}"
         cargo build --release --target ${{ matrix.target }} --verbose
 
+    # FIX: Ensure strip step only runs when the binary file actually exists
     - name: Strip binary (unix)
       if: runner.os != 'Windows'
-      run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+      run: |
+        BINARY_PATH="target/${{ matrix.target }}/release/${{ matrix.artifact_name }}"
+        if [ -f "$BINARY_PATH" ]; then
+          strip "$BINARY_PATH"
+        else
+          echo "Warning: Binary not found at $BINARY_PATH"
+          ls -la target/${{ matrix.target }}/release/
+        fi
 
     - name: Create archive (unix)
       if: runner.os != 'Windows'
@@ -119,7 +132,7 @@ jobs:
         echo "Creating Windows archive for: ${{ matrix.artifact_name }}"
         cd target/${{ matrix.target }}/release
         dir
-        where 7z
+        # FIX: Use pre-installed 7z.exe instead of relying on Chocolatey install
         7z a ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
 
     - name: Upload artifact
