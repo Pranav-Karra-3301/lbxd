@@ -1,3 +1,6 @@
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::redundant_pattern_matching)]
+
 use clap::Parser;
 use lbxd::{
     cache::CacheManager,
