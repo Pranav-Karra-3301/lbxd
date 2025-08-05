@@ -11,7 +11,6 @@ use std::time::Duration;
 use terminal_size::{terminal_size, Height, Width};
 use tokio::time::interval;
 
-
 pub struct DisplayEngine {
     ascii_converter: AsciiConverter,
     tmdb_client: TMDBClient,

@@ -1,5 +1,5 @@
 #![allow(clippy::uninlined_format_args)]
-#![allow(clippy::if_same_then_else)]  
+#![allow(clippy::if_same_then_else)]
 #![allow(clippy::print_literal)]
 #![allow(clippy::unused_enumerate_index)]
 #![allow(clippy::manual_map)]

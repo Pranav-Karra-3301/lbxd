@@ -90,7 +90,8 @@ impl ProgressBar {
     ██║     ██╔══██╗ ██╔██╗ ██║  ██║
     ███████╗██████╔╝██╔╝ ██╗██████╔╝
     ╚══════╝╚═════╝ ╚═╝  ╚═╝╚═════╝ 
-            "#.to_string()
+            "#
+        .to_string()
     }
 
     fn get_animated_loading_message(&self) -> &'static str {
