@@ -27,12 +27,10 @@ mod tests {
     fn test_config_creation() {
         // Test that config can be created without panicking
         use crate::config::ConfigManager;
-        
+
         // This test should pass even if config creation fails gracefully
-        let result = std::panic::catch_unwind(|| {
-            ConfigManager::new()
-        });
-        
+        let result = std::panic::catch_unwind(|| ConfigManager::new());
+
         // We just want to ensure no panic occurs
         assert!(result.is_ok(), "Config creation should not panic");
     }
@@ -41,7 +39,7 @@ mod tests {
     fn test_display_engine() {
         // Test that display engine can be created
         use crate::display::DisplayEngine;
-        
+
         let _display = DisplayEngine::new();
         // Just verify we can create it without issues
         assert!(true, "Display engine created successfully");
