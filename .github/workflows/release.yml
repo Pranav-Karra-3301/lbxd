@@ -139,8 +139,16 @@ jobs:
             test_img = Image.open(tmp.name)
             print(f'Test image size: {test_img.size}')
             
-            # Clean up
-            os.unlink(tmp.name)
+            # Properly close the image to release file handles (important on Windows)
+            test_img.close()
+            
+            # Clean up with proper error handling for Windows
+            try:
+                os.unlink(tmp.name)
+            except (OSError, PermissionError) as e:
+                print(f'Warning: Could not delete temp file {tmp.name}: {e}')
+                # On Windows, temp files are often cleaned up automatically
+                pass
             
         print('ASCII art dependencies working correctly')
         "
