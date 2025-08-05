@@ -30,7 +30,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.rust }}
-        components: rustfmt
+        components: rustfmt, clippy
 
     - name: Setup Python
       uses: actions/setup-python@v5
@@ -43,11 +43,28 @@ jobs:
     - name: Check formatting
       run: cargo fmt -- --check
 
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1
+
+    - name: Install system dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # Ensure Homebrew is available and up to date
+        brew update || true
+        # Install system libraries if needed (most are provided by macOS)
+        echo "macOS system dependencies ready"
+
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         # Install setuptools first to provide distutils functionality
         pip install setuptools
+        # Install image processing dependencies required for ASCII art generation
+        # Use headless OpenCV to avoid GUI dependencies
+        pip install opencv-python-headless Pillow numpy
         pip install letterboxdpy
         
     - name: Cache cargo registry

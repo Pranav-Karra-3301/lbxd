@@ -20,7 +20,7 @@ mod tests {
     #[test]
     fn test_basic_functionality() {
         // Basic smoke test to ensure core modules can be imported
-        assert!(true, "Basic imports successful");
+        // This test just needs to compile successfully
     }
 
     #[test]
@@ -29,7 +29,7 @@ mod tests {
         use crate::config::ConfigManager;
 
         // This test should pass even if config creation fails gracefully
-        let result = std::panic::catch_unwind(|| ConfigManager::new());
+        let result = std::panic::catch_unwind(ConfigManager::new);
 
         // We just want to ensure no panic occurs
         assert!(result.is_ok(), "Config creation should not panic");
@@ -41,7 +41,6 @@ mod tests {
         use crate::display::DisplayEngine;
 
         let _display = DisplayEngine::new();
-        // Just verify we can create it without issues
-        assert!(true, "Display engine created successfully");
+        // Just verify we can create it without issues - test passes if no panic
     }
 }

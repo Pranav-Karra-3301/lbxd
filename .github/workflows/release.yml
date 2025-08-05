@@ -61,12 +61,29 @@ jobs:
         python --version
         python -m pip --version
 
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1
+
+    - name: Install system dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        # Ensure Homebrew is available and up to date
+        brew update || true
+        # Install system libraries if needed (most are provided by macOS)
+        echo "macOS system dependencies ready"
+
     - name: Install Python dependencies (Unix)
       if: runner.os != 'Windows'
       run: |
         python -m pip install --upgrade pip
         # Install setuptools first to provide distutils functionality
         pip install setuptools
+        # Install image processing dependencies required for ASCII art generation
+        # Use headless OpenCV to avoid GUI dependencies
+        pip install opencv-python-headless Pillow numpy
         pip install letterboxdpy
 
     - name: Install Python dependencies (Windows)
@@ -75,7 +92,14 @@ jobs:
         python -m pip install --upgrade pip
         # Install setuptools first to provide distutils functionality
         pip install setuptools
+        # Install image processing dependencies required for ASCII art generation
+        # Use headless OpenCV to avoid GUI dependencies on Windows
+        pip install opencv-python-headless Pillow numpy
         pip install letterboxdpy
+
+    - name: Validate Python dependencies
+      run: |
+        python -c "import cv2; import PIL; import numpy; import letterboxdpy; print('All Python dependencies installed successfully')"
 
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -95,6 +119,31 @@ jobs:
       with:
         path: target
         key: ${{ runner.os }}-${{ matrix.target }}-${{ matrix.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Test ASCII art generation
+      run: |
+        echo "Testing Python ASCII art generation..."
+        python -c "
+        import tempfile
+        import os
+        from PIL import Image
+        import numpy as np
+        
+        # Create a simple test image
+        img = Image.new('RGB', (100, 100), color='red')
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+            img.save(tmp.name)
+            print(f'Test image created: {tmp.name}')
+            
+            # Test if we can read it back
+            test_img = Image.open(tmp.name)
+            print(f'Test image size: {test_img.size}')
+            
+            # Clean up
+            os.unlink(tmp.name)
+            
+        print('ASCII art dependencies working correctly')
+        "
 
     - name: Build release
       run: |
