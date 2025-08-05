@@ -208,7 +208,7 @@ jobs:
 
     - name: Move artifacts to root
       run: |
-        find ./artifacts -name "*.tar.gz" -o -name "*.zip" | while read file; do
+        find ./artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \) | while read file; do
           mv "$file" ./
         done
         ls -la *.tar.gz *.zip
