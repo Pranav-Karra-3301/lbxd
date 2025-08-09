@@ -1,0 +1,3 @@
+[submodule "rustboxd"]
+	path = rustboxd
+	url = https://github.com/Pranav-Karra-3301/rustboxd.git

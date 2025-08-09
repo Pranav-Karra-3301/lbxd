@@ -39,6 +39,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
@@ -49,57 +51,13 @@ jobs:
       if: runner.os == 'Windows'
       uses: microsoft/setup-msbuild@v2
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        # Keep Python 3.12 explicit pin to prevent distutils/packaging issues
-        # that arise with Python 3.13+ where distutils was removed from stdlib
-        python-version: '3.12'
+    # No Python setup needed - pure Rust implementation
 
-    - name: Verify Python installation
-      run: |
-        python --version
-        python -m pip --version
+    # No system dependencies needed for pure Rust build
 
-    - name: Install system dependencies (Ubuntu)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libgl1 libglib2.0-0 libgomp1
+    # No system dependencies needed for pure Rust build on macOS
 
-    - name: Install system dependencies (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        # Ensure Homebrew is available and up to date
-        brew update || true
-        # Install system libraries if needed (most are provided by macOS)
-        echo "macOS system dependencies ready"
-
-    - name: Install Python dependencies (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        python -m pip install --upgrade pip
-        # Install setuptools first to provide distutils functionality
-        pip install setuptools
-        # Install image processing dependencies required for ASCII art generation
-        # Use headless OpenCV to avoid GUI dependencies
-        pip install opencv-python-headless Pillow numpy
-        pip install letterboxdpy
-
-    - name: Install Python dependencies (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        python -m pip install --upgrade pip
-        # Install setuptools first to provide distutils functionality
-        pip install setuptools
-        # Install image processing dependencies required for ASCII art generation
-        # Use headless OpenCV to avoid GUI dependencies on Windows
-        pip install opencv-python-headless Pillow numpy
-        pip install letterboxdpy
-
-    - name: Validate Python dependencies
-      run: |
-        python -c "import cv2; import PIL; import numpy; import letterboxdpy; print('All Python dependencies installed successfully')"
+    # No Python dependencies needed - using pure Rust with rustboxd
 
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -120,38 +78,7 @@ jobs:
         path: target
         key: ${{ runner.os }}-${{ matrix.target }}-${{ matrix.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Test ASCII art generation
-      run: |
-        echo "Testing Python ASCII art generation..."
-        python -c "
-        import tempfile
-        import os
-        from PIL import Image
-        import numpy as np
-        
-        # Create a simple test image
-        img = Image.new('RGB', (100, 100), color='red')
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
-            img.save(tmp.name)
-            print(f'Test image created: {tmp.name}')
-            
-            # Test if we can read it back
-            test_img = Image.open(tmp.name)
-            print(f'Test image size: {test_img.size}')
-            
-            # Properly close the image to release file handles (important on Windows)
-            test_img.close()
-            
-            # Clean up with proper error handling for Windows
-            try:
-                os.unlink(tmp.name)
-            except (OSError, PermissionError) as e:
-                print(f'Warning: Could not delete temp file {tmp.name}: {e}')
-                # On Windows, temp files are often cleaned up automatically
-                pass
-            
-        print('ASCII art dependencies working correctly')
-        "
+    # ASCII art has been removed - using viu for image display
 
     - name: Build release
       run: |
