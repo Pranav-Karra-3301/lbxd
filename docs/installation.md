@@ -4,7 +4,7 @@
 
 lbxd has minimal system requirements:
 
-- **Python 3.8+** (automatically installed if missing)
+- **viu** for terminal image display
 - **Terminal** with Unicode support
 - **Internet connection** for initial setup
 
@@ -29,9 +29,9 @@ irm https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.ps1 | 
 ```
 
 This script will:
-- ✅ Install Python 3 and pip (if needed)
-- ✅ Install letterboxdpy dependency
-- ✅ Install viu for enhanced image display
+- ✅ Install viu for image display (required)
+- ✅ Download and install lbxd binary
+- ✅ Configure your PATH automatically
 - ✅ Download and install the latest lbxd binary
 - ✅ Set up PATH configuration
 
@@ -52,7 +52,7 @@ brew install lbxd
 ### Chocolatey (Windows)
 
 ```powershell
-# Install lbxd (includes Python and dependencies)
+# Install lbxd (includes all dependencies)
 choco install lbxd
 ```
 
@@ -70,8 +70,7 @@ winget install Pranav-Karra-3301.lbxd
 cargo install lbxd
 
 # Install dependencies manually
-pip3 install letterboxdpy
-cargo install viu  # Optional, for enhanced image display
+cargo install viu  # Required for image display
 ```
 
 ## Manual Installation
@@ -110,8 +109,8 @@ chmod +x /usr/local/bin/lbxd
 
 **Prerequisites:**
 - Rust 1.88.0 or later ([install here](https://rustup.rs/))
-- Python 3.8+ with pip
 - Git
+- viu for image display
 
 **Basic build:**
 ```bash
@@ -119,8 +118,8 @@ chmod +x /usr/local/bin/lbxd
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install Python dependencies
-pip3 install letterboxdpy
+# Install viu (required)
+cargo install viu
 
 # Install viu for enhanced image display (optional)
 cargo install viu
@@ -139,8 +138,8 @@ lbxd --version
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install dependencies
-pip3 install letterboxdpy
+# Install viu if not already installed
+cargo install viu
 
 # Run in development mode
 cargo run -- --help
@@ -171,30 +170,11 @@ cargo build --release --target x86_64-unknown-linux-gnu
 
 ## Dependencies
 
-### Python Dependencies
+### Image Display
 
-lbxd requires `letterboxdpy` for Letterboxd integration:
+lbxd requires `viu` for displaying movie posters:
 
-```bash
-# Install with pip
-pip3 install letterboxdpy
-
-# Or use the system package manager
-# Ubuntu/Debian
-sudo apt install python3-pip
-pip3 install letterboxdpy
-
-# macOS with Homebrew
-brew install python@3.12
-pip3 install letterboxdpy
-
-# Windows
-python -m pip install letterboxdpy
-```
-
-### Optional: Enhanced Image Display
-
-For the best experience, install `viu` for terminal image display:
+Install `viu` using one of these methods:
 
 ```bash
 # Using Cargo
@@ -228,7 +208,7 @@ choco install viu
 sudo apt update
 
 # Install dependencies
-sudo apt install curl python3 python3-pip
+sudo apt install curl
 
 # Install lbxd
 curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.sh | bash
@@ -238,7 +218,7 @@ curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.
 
 ```bash
 # Install dependencies
-sudo pacman -S curl python python-pip
+sudo pacman -S curl viu
 
 # Install lbxd
 curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.sh | bash
@@ -248,10 +228,10 @@ curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.
 
 ```bash
 # CentOS/RHEL
-sudo yum install curl python3 python3-pip
+sudo yum install curl
 
 # Fedora
-sudo dnf install curl python3 python3-pip
+sudo dnf install curl
 
 # Install lbxd
 curl -sSL https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.sh | bash
@@ -290,8 +270,8 @@ winget install Pranav-Karra-3301.lbxd
 ```
 
 **Option 3: Manual Installation**
-1. Install [Python 3](https://python.org/downloads/)
-2. Download the Windows binary from [releases](https://github.com/Pranav-Karra-3301/lbxd/releases)
+1. Download the Windows binary from [releases](https://github.com/Pranav-Karra-3301/lbxd/releases)
+2. Install viu: `cargo install viu`
 3. Extract and add to PATH
 
 ## Docker
@@ -324,6 +304,6 @@ lbxd recent letterboxd
 # Check if viu is available (optional)
 viu --version
 
-# Check Python dependency
-python3 -c "import letterboxdpy; print('letterboxdpy is available')"
+# Check viu installation
+viu --version
 ```

@@ -69,8 +69,8 @@ winget install Pranav-Karra-3301.lbxd
 
 **Prerequisites:**
 - Rust 1.88.0 or later
-- Python 3.8+ with pip
 - Git
+- viu (required for poster display)
 
 **Build steps:**
 ```bash
@@ -78,10 +78,11 @@ winget install Pranav-Karra-3301.lbxd
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install Python dependencies
-pip3 install letterboxdpy
+# Install viu (required)
+# macOS: brew install viu
+# Cargo: cargo install viu
 
-# Install viu for enhanced image display (optional)
+# Install viu if not already installed
 cargo install viu
 
 # Build and install lbxd
@@ -123,10 +124,10 @@ Download prebuilt binaries from the [releases page](https://github.com/Pranav-Ka
 ### System Dependencies
 
 **Required:**
-- Python 3.8+ with `letterboxdpy` package
+- `viu` for terminal image display
 
-**Optional but recommended:**
-- `viu` for enhanced terminal image display
+**Built-in:**
+- rustboxd for Letterboxd data access
 - Modern terminal with Unicode support
 
 **No setup required:**
@@ -264,8 +265,8 @@ lbxd movie "Inception"
 
 **Prerequisites:**
 - Rust 1.88.0 or later
-- Python 3.8+ with pip
 - Git
+- viu (required for poster display)
 
 **Development setup:**
 ```bash
@@ -273,10 +274,11 @@ lbxd movie "Inception"
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install Python dependencies
-pip3 install letterboxdpy
+# Install viu (required)
+# macOS: brew install viu
+# Cargo: cargo install viu
 
-# Install viu for enhanced image display (optional)
+# Install viu if not already installed
 cargo install viu
 
 # Run in development mode
@@ -343,7 +345,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [The Movie Database (TMDB)](https://www.themoviedb.org/) for comprehensive movie information
 - [Open Movie Database (OMDB)](http://www.omdbapi.com/) for additional movie metadata
 - The Rust community for excellent crates and development tools
-- [letterboxdpy](https://github.com/nmcassa/letterboxdpy) for Python integration capabilities
+- rustboxd - Native Rust library for Letterboxd data (built-in)
 
 ## 📞 Support
 

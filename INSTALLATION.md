@@ -22,7 +22,7 @@ This automatically installs all dependencies and the latest version of lbxd.
 
 ## 📋 Prerequisites
 
-- **Python 3.8+** with pip
+- **viu** for terminal image display
 - **Modern terminal** with Unicode support
 - **Internet connection** for initial setup
 
@@ -52,7 +52,7 @@ lbxd --version
 ### Chocolatey (Windows)
 
 ```powershell
-# Install lbxd (includes Python and dependencies)
+# Install lbxd (includes all dependencies)
 choco install lbxd
 
 # Verify installation
@@ -76,8 +76,7 @@ lbxd --version
 cargo install lbxd
 
 # Install dependencies manually
-pip3 install letterboxdpy
-cargo install viu  # Optional, for enhanced image display
+cargo install viu  # Required for image display
 
 # Verify installation
 lbxd --version
@@ -99,8 +98,8 @@ tar -xzf lbxd-linux-x86_64.tar.gz
 sudo mv lbxd /usr/local/bin/
 chmod +x /usr/local/bin/lbxd
 
-# Install Python dependencies
-pip3 install letterboxdpy
+# Install viu (required)
+brew install viu
 ```
 
 ### macOS (Intel)
@@ -113,8 +112,8 @@ tar -xzf lbxd-macos-x86_64.tar.gz
 sudo mv lbxd /usr/local/bin/
 chmod +x /usr/local/bin/lbxd
 
-# Install Python dependencies
-pip3 install letterboxdpy
+# Install viu (required)
+brew install viu
 ```
 
 ### macOS (Apple Silicon)
@@ -127,8 +126,8 @@ tar -xzf lbxd-macos-aarch64.tar.gz
 sudo mv lbxd /usr/local/bin/
 chmod +x /usr/local/bin/lbxd
 
-# Install Python dependencies
-pip3 install letterboxdpy
+# Install viu (required)
+brew install viu
 ```
 
 ### Windows (x86_64)
@@ -140,8 +139,8 @@ Expand-Archive -Path "lbxd-windows.zip" -DestinationPath "C:\Program Files\lbxd\
 # Add to PATH (restart terminal after)
 $env:PATH += ";C:\Program Files\lbxd"
 
-# Install Python dependencies
-pip install letterboxdpy
+# Install viu (required)
+cargo install viu
 ```
 
 ---
@@ -150,8 +149,8 @@ pip install letterboxdpy
 
 ### Prerequisites
 - **Rust 1.88.0+** ([install here](https://rustup.rs/))
-- **Python 3.8+** with pip
 - **Git**
+- **viu** for image display
 
 ### Basic Build
 ```bash
@@ -159,8 +158,8 @@ pip install letterboxdpy
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install Python dependencies
-pip3 install letterboxdpy
+# Install viu (required)
+brew install viu
 
 # Install viu for enhanced image display (optional)
 cargo install viu
@@ -179,8 +178,8 @@ lbxd --version
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install dependencies
-pip3 install letterboxdpy
+# Install viu if not already installed
+cargo install viu
 
 # Run in development mode
 cargo run -- --help
@@ -303,8 +302,8 @@ lbxd recent letterboxd
 # Check if viu is available (optional)
 viu --version
 
-# Check Python dependency
-python3 -c "import letterboxdpy; print('letterboxdpy is available')"
+# Check viu installation
+viu --version
 ```
 
 ---
@@ -312,7 +311,7 @@ python3 -c "import letterboxdpy; print('letterboxdpy is available')"
 ## 🔧 Dependencies
 
 ### Required
-- **Python 3.8+** with `letterboxdpy` package
+- **viu** for terminal image display
 - **curl** for network requests
 
 ### Optional but Recommended
@@ -330,9 +329,10 @@ python3 -c "import letterboxdpy; print('letterboxdpy is available')"
 
 ### Common Issues
 
-**Python dependency not found:**
+**viu not found:**
 ```bash
-pip3 install --user letterboxdpy
+cargo install viu
+# or on macOS: brew install viu
 ```
 
 **Binary not in PATH:**
