@@ -271,10 +271,7 @@ async fn main() {
             display.print_error("Summary feature is under development. Check back soon!");
         }
 
-        Commands::Movie {
-            title,
-            width,
-        } => {
+        Commands::Movie { title, width } => {
             display.print_minimal_logo();
 
             let tmdb_client = TMDBClient::new();

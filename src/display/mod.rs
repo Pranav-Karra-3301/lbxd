@@ -122,7 +122,8 @@ impl DisplayEngine {
                 self.display_entry_with_tmdb_lookup(entry, width).await;
             }
         } else {
-            self.display_entries_horizontal_grid_tmdb(&entries_to_show, width).await;
+            self.display_entries_horizontal_grid_tmdb(&entries_to_show, width)
+                .await;
         }
     }
 
@@ -143,7 +144,11 @@ impl DisplayEngine {
 
         if let Some(avg) = summary.average_rating {
             let stars = self.rating_to_stars(avg);
-            println!("  ⭐ Average Rating: {} ({})", stars, avg.to_string().yellow());
+            println!(
+                "  ⭐ Average Rating: {} ({})",
+                stars,
+                avg.to_string().yellow()
+            );
         }
 
         println!();
@@ -233,7 +238,10 @@ impl DisplayEngine {
         self.print_header(&format!("📊 Profile Overview - {}", stats.username));
 
         // Basic stats
-        println!("  {} Films watched", stats.total_films.to_string().cyan().bold());
+        println!(
+            "  {} Films watched",
+            stats.total_films.to_string().cyan().bold()
+        );
         println!(
             "  {} Films this year",
             stats.films_this_year.to_string().cyan().bold()
@@ -558,7 +566,10 @@ impl DisplayEngine {
             println!();
 
             if let Some(date) = entry.watched_date {
-                println!("  Watched: {}", date.format("%B %d, %Y").to_string().dimmed());
+                println!(
+                    "  Watched: {}",
+                    date.format("%B %d, %Y").to_string().dimmed()
+                );
             }
 
             if let Some(review) = &entry.review {
@@ -575,11 +586,7 @@ impl DisplayEngine {
         self.print_footer();
     }
 
-    pub async fn search_with_poster(
-        &self,
-        results: Vec<UserEntry>,
-        width: u32,
-    ) {
+    pub async fn search_with_poster(&self, results: Vec<UserEntry>, width: u32) {
         if results.is_empty() {
             self.print_warning("No matching movies found");
             return;

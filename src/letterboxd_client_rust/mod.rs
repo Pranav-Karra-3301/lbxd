@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::Datelike;
-use rustboxd::{User, Movie, DiaryMovieEntry, WatchlistMovie};
+use rustboxd::{DiaryMovieEntry, Movie, User, WatchlistMovie};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -35,7 +35,7 @@ impl LetterboxdClient {
 
         // Get user data using rustboxd
         let user = User::new(username).await?;
-        
+
         if let Some(ref tx) = progress_tx {
             let _ = tx.send(LoadingProgress {
                 stage: LoadingStage::Diary,
@@ -75,9 +75,7 @@ impl LetterboxdClient {
             .await?;
 
         // Add watchlist data
-        let watchlist_movies_vec = self
-            .convert_watchlist_to_movies(watchlist_movies)
-            .await?;
+        let watchlist_movies_vec = self.convert_watchlist_to_movies(watchlist_movies).await?;
         let total_watchlist_available = watchlist_movies_vec.len();
 
         comprehensive_profile.watchlist = watchlist_movies_vec;
@@ -116,7 +114,7 @@ impl LetterboxdClient {
     ) -> Result<ComprehensiveProfile> {
         // Extract basic profile information
         let display_name = user.display_name.clone();
-        
+
         let stats = user.stats.as_ref();
         let total_films = stats.map(|s| s.films).unwrap_or(0);
         let films_this_year = stats.map(|s| s.this_year).unwrap_or(0);
@@ -186,7 +184,10 @@ impl LetterboxdClient {
         Ok(favorites)
     }
 
-    fn convert_diary_entries(&self, diary_entries: Vec<DiaryMovieEntry>) -> Result<Vec<UserMovieEntry>> {
+    fn convert_diary_entries(
+        &self,
+        diary_entries: Vec<DiaryMovieEntry>,
+    ) -> Result<Vec<UserMovieEntry>> {
         let mut movies = Vec::new();
 
         for entry in diary_entries {
@@ -729,8 +730,7 @@ impl LetterboxdClient {
                     .map(|g| g.split(", ").map(String::from).collect())
                     .unwrap_or_default();
                 movie.imdb_rating = omdb_client.get_imdb_rating(&omdb_movie);
-                movie.rotten_tomatoes_rating =
-                    omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
+                movie.rotten_tomatoes_rating = omdb_client.get_rotten_tomatoes_rating(&omdb_movie);
                 movie.metacritic_rating = omdb_client.get_metacritic_rating(&omdb_movie);
                 movie.imdb_id = omdb_movie.imdb_id.clone();
                 movie.release_date = omdb_movie.released.clone();
