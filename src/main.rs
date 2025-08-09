@@ -9,7 +9,7 @@ use lbxd::{
     display::DisplayEngine,
     export::ExportManager,
     feed::FeedParser,
-    letterboxd_client::LetterboxdClient,
+    letterboxd_client_rust::LetterboxdClient,
     onboarding::OnboardingManager,
     tmdb::TMDBClient,
     tui,
@@ -137,7 +137,6 @@ async fn main() {
             rated,
             reviewed,
             vertical,
-            ascii,
             width,
         } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
@@ -175,14 +174,13 @@ async fn main() {
 
             let filtered_profile = filter_entries(profile, date, rated, reviewed);
             display
-                .show_user_activity(&filtered_profile, limit, vertical, ascii, width)
+                .show_user_activity(&filtered_profile, limit, vertical, width)
                 .await;
         }
 
         Commands::Search {
             username,
             title,
-            ascii,
             width,
         } => {
             let actual_username = resolve_username(&username, &config_manager, &display).await;
@@ -226,7 +224,6 @@ async fn main() {
                                     },
                                     None,
                                     true,
-                                    ascii,
                                     width,
                                 )
                                 .await; // Default to vertical for search results
@@ -276,7 +273,6 @@ async fn main() {
 
         Commands::Movie {
             title,
-            ascii,
             width,
         } => {
             display.print_minimal_logo();
@@ -288,7 +284,7 @@ async fn main() {
 
             match tmdb_client.search_movie(&title).await {
                 Ok(Some(movie)) => {
-                    display.show_tmdb_movie(&movie, ascii, width).await;
+                    display.show_tmdb_movie(&movie, width).await;
                 }
                 Ok(None) => {
                     display.print_error(&format!("No movies found for '{}'", title));

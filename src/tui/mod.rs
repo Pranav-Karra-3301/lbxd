@@ -39,15 +39,17 @@ pub async fn run_tui(username: &str) -> Result<()> {
 
     // Start data loading in background
     let username_clone = username.to_string();
-    let scraper_handle = tokio::spawn(async move {
-        match crate::letterboxd_client::LetterboxdClient::new() {
-            Ok(client) => {
-                client
-                    .get_comprehensive_profile(&username_clone, Some(progress_tx))
-                    .await
+    let scraper_handle = tokio::task::spawn_blocking(move || {
+        tokio::runtime::Handle::current().block_on(async move {
+            match crate::letterboxd_client_rust::LetterboxdClient::new() {
+                Ok(client) => {
+                    client
+                        .get_comprehensive_profile(&username_clone, Some(progress_tx))
+                        .await
+                }
+                Err(e) => Err(e),
             }
-            Err(e) => Err(e),
-        }
+        })
     });
 
     // Run the UI

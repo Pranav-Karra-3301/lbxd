@@ -32,8 +32,6 @@ pub enum Commands {
         reviewed: bool,
         #[arg(short = 'v', long, help = "Display in vertical layout")]
         vertical: bool,
-        #[arg(long, help = "Use ASCII art mode for poster display")]
-        ascii: bool,
         #[arg(long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
     },
@@ -43,8 +41,6 @@ pub enum Commands {
         username: String,
         #[arg(help = "Movie title to search for")]
         title: String,
-        #[arg(long, help = "Use ASCII art mode for poster display")]
-        ascii: bool,
         #[arg(long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
     },
@@ -73,8 +69,6 @@ pub enum Commands {
     Movie {
         #[arg(help = "Movie title to search for")]
         title: String,
-        #[arg(long, help = "Use ASCII art mode for poster display")]
-        ascii: bool,
         #[arg(short, long, help = "Width in characters (30-120)", value_parser = clap::value_parser!(u32).range(30..=120), default_value = "45")]
         width: u32,
     },

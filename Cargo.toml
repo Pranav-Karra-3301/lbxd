@@ -1,6 +1,6 @@
 [package]
 name = "lbxd"
-version = "2.2.3"
+version = "3.0.0"
 edition = "2021"
 description = "A beautiful command-line tool for Letterboxd"
 homepage = "https://github.com/Pranav-Karra-3301/lbxd"
@@ -27,6 +27,9 @@ terminal_size = "0.3"
 urlencoding = "2.1"
 ratatui = "0.24"
 crossterm = "0.28"
+rustboxd = { path = "../rustboxd" }
+scraper = "0.21"
+async-trait = "0.1"
 
 [dev-dependencies]
 tokio-test = "0.4"

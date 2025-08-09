@@ -36,49 +36,14 @@ function Test-Command {
     }
 }
 
+# Python is no longer required - using rustboxd instead
 function Install-Python {
-    Write-ColoredOutput "🐍 Installing Python..." $Blue
-    
-    if (Test-Command "python") {
-        $pythonVersion = & python --version 2>&1
-        if ($pythonVersion -match "Python (\d+)\.(\d+)") {
-            $majorVersion = [int]$matches[1]
-            $minorVersion = [int]$matches[2]
-            if ($majorVersion -ge 3 -and $minorVersion -ge 8) {
-                Write-ColoredOutput "✅ Python $($matches[0]) is already installed" $Green
-                return
-            }
-        }
-    }
-    
-    # Try to install Python via winget
-    if (Test-Command "winget") {
-        Write-ColoredOutput "Installing Python via winget..." $Yellow
-        winget install Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements
-    } elseif (Test-Command "choco") {
-        Write-ColoredOutput "Installing Python via Chocolatey..." $Yellow
-        choco install python3 -y
-    } else {
-        Write-ColoredOutput "Please install Python 3.8+ manually from https://python.org/downloads/" $Red
-        Write-ColoredOutput "After installing Python, run this script again." $Yellow
-        exit 1
-    }
-    
-    # Refresh PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    Write-ColoredOutput "ℹ️  Python is no longer required (using rustboxd)" $Blue
 }
 
+# Python dependencies no longer needed
 function Install-PythonDependencies {
-    Write-ColoredOutput "📦 Installing Python dependencies..." $Blue
-    
-    # Install letterboxdpy
-    try {
-        & python -m pip install --user letterboxdpy
-        Write-ColoredOutput "✅ letterboxdpy installed successfully" $Green
-    } catch {
-        Write-ColoredOutput "❌ Failed to install letterboxdpy: $($_.Exception.Message)" $Red
-        exit 1
-    }
+    Write-ColoredOutput "ℹ️  Python dependencies not required (using rustboxd)" $Blue
 }
 
 function Install-Viu {
@@ -100,7 +65,12 @@ function Install-Viu {
         Write-ColoredOutput "Installing viu via Chocolatey..." $Yellow
         choco install viu -y
     } else {
-        Write-ColoredOutput "⚠️  Could not install viu. lbxd will use ASCII art mode." $Yellow
+        Write-ColoredOutput "❌ Could not install viu. viu is required for poster display." $Red
+        Write-ColoredOutput "Please install viu manually from: https://github.com/atanunq/viu" $Yellow
+        Write-ColoredOutput "Installation methods:" $Yellow
+        Write-ColoredOutput "  Cargo: cargo install viu" $Cyan
+        Write-ColoredOutput "  Scoop: scoop install viu" $Cyan
+        exit 1
     }
 }
 

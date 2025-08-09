@@ -6,7 +6,6 @@
 #![allow(clippy::ptr_arg)]
 #![allow(clippy::needless_borrow)]
 
-pub mod ascii;
 pub mod batch_loader;
 pub mod cache;
 pub mod cli;
@@ -14,7 +13,7 @@ pub mod config;
 pub mod display;
 pub mod export;
 pub mod feed;
-pub mod letterboxd_client;
+pub mod letterboxd_client_rust;
 pub mod models;
 pub mod omdb;
 pub mod onboarding;

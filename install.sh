@@ -135,26 +135,11 @@ install_python() {
     fi
 }
 
-# Install Python dependencies
+# No longer need Python dependencies since we're using rustboxd
+# This function is kept for compatibility but does nothing
 install_python_deps() {
-    print_info "Installing Python dependencies..."
-    
-    # Use pip3 if available, otherwise pip
-    PIP_CMD="pip3"
-    if ! command_exists pip3; then
-        PIP_CMD="pip"
-    fi
-    
-    if ! command_exists $PIP_CMD; then
-        print_error "pip not found. Please install pip manually."
-        exit 1
-    fi
-    
-    # Install letterboxdpy (required for Letterboxd integration)
-    print_info "Installing letterboxdpy..."
-    $PIP_CMD install --user letterboxdpy
-    
-    print_status "Python dependencies installed successfully"
+    print_info "Python dependencies no longer required (using rustboxd)"
+    print_status "Skipping Python dependency installation"
 }
 
 # Install viu (for image display in terminal)
@@ -214,8 +199,12 @@ install_viu() {
     if command_exists viu; then
         print_status "viu installed successfully"
     else
-        print_warning "viu installation failed. LBXD will use ASCII art mode by default."
-        print_info "You can manually install viu later from: https://github.com/atanunq/viu"
+        print_error "viu installation failed. viu is required for poster display."
+        print_info "Please install viu manually from: https://github.com/atanunq/viu"
+        print_info "Installation methods:"
+        print_info "  macOS: brew install viu"
+        print_info "  Cargo: cargo install viu"
+        exit 1
     fi
 }
 
@@ -390,12 +379,8 @@ main() {
     print_info "Detected OS: $OS ($ARCH)"
     echo
     
-    # Install Python 3
-    install_python
-    echo
-    
-    # Install Python dependencies
-    install_python_deps
+    # Python no longer required - using rustboxd instead
+    print_info "Python dependencies not required (using rustboxd)"
     echo
     
     # Install viu (optional but recommended)
