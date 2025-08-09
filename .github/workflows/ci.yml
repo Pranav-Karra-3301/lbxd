@@ -32,9 +32,7 @@ jobs:
         toolchain: ${{ matrix.rust }}
         components: rustfmt, clippy
 
-    # Checkout submodules (rustboxd)
-    - name: Checkout submodules
-      run: git submodule update --init --recursive
+    # No submodules needed - rustboxd is now from crates.io
 
     # Run cargo fmt check BEFORE restoring caches so formatting errors surface fast
     - name: Check formatting

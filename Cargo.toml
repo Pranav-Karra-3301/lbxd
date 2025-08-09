@@ -27,7 +27,7 @@ terminal_size = "0.3"
 urlencoding = "2.1"
 ratatui = "0.24"
 crossterm = "0.28"
-rustboxd = { path = "./rustboxd" }
+rustboxd = "0.2.0"
 scraper = "0.21"
 async-trait = "0.1"
 

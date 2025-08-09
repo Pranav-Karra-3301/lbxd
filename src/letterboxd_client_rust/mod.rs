@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::Datelike;
-use rustboxd::{DiaryMovieEntry, Movie, User, WatchlistMovie};
+use rustboxd::{DiaryMovieEntry, User, WatchlistMovie};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -167,7 +167,7 @@ impl LetterboxdClient {
         let mut favorites = Vec::new();
 
         if let Some(ref favorites_map) = user.favorites {
-            for (_id, movie_data) in favorites_map {
+            for movie_data in favorites_map.values() {
                 let title = movie_data.name.clone();
                 let slug = movie_data.slug.clone();
                 let letterboxd_url = format!("https://letterboxd.com/film/{}", slug);

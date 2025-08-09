@@ -1,4 +1,3 @@
-use crate::batch_loader::BatchLoader;
 use crate::config::{ColorMode, ConfigManager, DisplayMode};
 use crate::models::{UserEntry, UserProfile, ViewingSummary};
 use crate::profile::ProfileStats;
@@ -37,12 +36,14 @@ impl DisplayEngine {
             .unwrap_or(true)
     }
 
+    #[allow(dead_code)]
     fn get_color_mode(&self) -> ColorMode {
         ConfigManager::new()
             .map(|cm| cm.get_color_mode().unwrap_or(ColorMode::Color))
             .unwrap_or(ColorMode::Color)
     }
 
+    #[allow(dead_code)]
     fn apply_ansi_color(&self, text: &str, color: &str) -> String {
         match self.get_color_mode() {
             ColorMode::Color => match color {
@@ -66,6 +67,7 @@ impl DisplayEngine {
         }
     }
 
+    #[allow(dead_code)]
     fn apply_style_with_ansi_color(&self, text: &str, style: &str, color: &str) -> String {
         match self.get_color_mode() {
             ColorMode::Color => {
@@ -311,10 +313,11 @@ impl DisplayEngine {
             if ViuViewer::is_available() {
                 self.print_loading_animation("Loading poster...", 300).await;
                 let use_pixelated = self.get_display_mode();
-                if let Err(_) = self
+                if self
                     .viu_viewer
                     .display_image_url(&url, width, use_pixelated)
                     .await
+                    .is_err()
                 {
                     self.print_warning("Failed to display image with viu");
                 }
@@ -377,11 +380,9 @@ impl DisplayEngine {
         let mut current_line = String::new();
 
         for word in words {
-            if current_line.len() + word.len() + 1 > width {
-                if !current_line.is_empty() {
-                    lines.push(current_line.clone());
-                    current_line.clear();
-                }
+            if current_line.len() + word.len() + 1 > width && !current_line.is_empty() {
+                lines.push(current_line.clone());
+                current_line.clear();
             }
             if !current_line.is_empty() {
                 current_line.push(' ');
