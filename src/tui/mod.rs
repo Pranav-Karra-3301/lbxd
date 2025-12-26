@@ -145,29 +145,52 @@ async fn run_ui<B: Backend>(
     loop {
         terminal.draw(|f| app.render(f))?;
 
-        // Handle poster loading (simplified for development)
+        // Handle poster loading - fetch TMDB data for movie info panel
         if let Some(title) = app.get_pending_poster_load() {
             app.clear_pending_poster_load();
 
-            // Try to get movie details from TMDB and show poster URL
+            // Try to get movie details from TMDB
             let title_clone = title.clone();
             if let Ok(Some(movie)) = tmdb_client.search_movie(&title_clone).await {
+                let mut info = format!("🎬 {}\n", title);
+
+                // Release date
+                if let Some(ref date) = movie.release_date {
+                    info.push_str(&format!("📅 Released: {}\n", date));
+                }
+
+                // TMDB Rating
+                if movie.vote_average > 0.0 {
+                    let stars = "★".repeat((movie.vote_average / 2.0) as usize);
+                    let empty = "☆".repeat(5 - (movie.vote_average / 2.0) as usize);
+                    info.push_str(&format!(
+                        "⭐ TMDB: {}{} ({:.1}/10)\n",
+                        stars, empty, movie.vote_average
+                    ));
+                }
+
+                // Poster URL for reference
                 if let Some(ref poster_path) = movie.poster_path {
                     let poster_url = tmdb_client.get_poster_url(poster_path);
-                    let dev_info = format!("🎬 Poster for {}\n\n[Development Mode]\nPoster URL:\n{}\n\nTMDB ID: {}\nRelease: {}", 
-                        title,
-                        poster_url,
-                        movie.id,
-                        movie.release_date.as_deref().unwrap_or("Unknown")
-                    );
-                    app.set_poster_result(title, dev_info);
-                } else {
-                    let fallback = format!("🎬 No poster found for {}\n\n[Development Mode]\nNo poster available on TMDB", title);
-                    app.set_poster_result(title, fallback);
+                    info.push_str(&format!("\n🖼 Poster available at:\n{}\n", poster_url));
                 }
+
+                // Overview
+                if let Some(ref overview) = movie.overview {
+                    if !overview.is_empty() {
+                        let truncated = if overview.len() > 200 {
+                            format!("{}...", &overview[..200])
+                        } else {
+                            overview.clone()
+                        };
+                        info.push_str(&format!("\n📝 {}", truncated));
+                    }
+                }
+
+                app.set_poster_result(title, info);
             } else {
                 let fallback = format!(
-                    "🎬 Movie not found: {}\n\n[Development Mode]\nTMDB search failed",
+                    "🎬 {}\n\n❌ Movie not found in TMDB\n\nTry searching for the full title",
                     title
                 );
                 app.set_poster_result(title, fallback);
