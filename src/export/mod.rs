@@ -26,6 +26,7 @@ impl ExportManager {
         match format {
             ExportFormat::Json => self.export_json(profile, output_path),
             ExportFormat::Markdown => self.export_markdown(profile, output_path),
+            ExportFormat::Csv => self.export_csv(profile, output_path),
         }
     }
 
@@ -42,6 +43,7 @@ impl ExportManager {
                 Ok(())
             }
             ExportFormat::Markdown => self.export_summary_markdown(summary, output_path),
+            ExportFormat::Csv => self.export_summary_csv(summary, output_path),
         }
     }
 
@@ -143,5 +145,81 @@ impl ExportManager {
 
         fs::write(output_path, content)?;
         Ok(())
+    }
+
+    fn export_csv(&self, profile: &UserProfile, output_path: &str) -> Result<()> {
+        let mut content = String::new();
+
+        // CSV Header
+        content.push_str("Title,Year,Rating,Liked,Watched Date,Letterboxd URL,Review\n");
+
+        for entry in &profile.entries {
+            let title = Self::escape_csv_field(&entry.movie.title);
+            let year = entry.movie.year.map(|y| y.to_string()).unwrap_or_default();
+            let rating = entry
+                .rating
+                .map(|r| format!("{:.1}", r))
+                .unwrap_or_default();
+            let liked = if entry.liked { "Yes" } else { "No" };
+            let watched_date = entry
+                .watched_date
+                .map(|d| d.format("%Y-%m-%d").to_string())
+                .unwrap_or_default();
+            let url = &entry.movie.letterboxd_url;
+            let review = entry
+                .review
+                .as_ref()
+                .map(|r| Self::escape_csv_field(r))
+                .unwrap_or_default();
+
+            content.push_str(&format!(
+                "{},{},{},{},{},{},{}\n",
+                title, year, rating, liked, watched_date, url, review
+            ));
+        }
+
+        fs::write(output_path, content)?;
+        Ok(())
+    }
+
+    fn export_summary_csv(&self, summary: &ViewingSummary, output_path: &str) -> Result<()> {
+        let mut content = String::new();
+
+        // Summary stats
+        content.push_str("Metric,Value\n");
+        content.push_str(&format!("Username,{}\n", summary.username));
+        content.push_str(&format!("Year,{}\n", summary.year));
+        content.push_str(&format!("Total Movies,{}\n", summary.total_movies));
+        content.push_str(&format!("Total Reviews,{}\n", summary.total_reviews));
+        if let Some(avg) = summary.average_rating {
+            content.push_str(&format!("Average Rating,{:.1}\n", avg));
+        }
+
+        content.push_str("\nTop Rated Movies\n");
+        content.push_str("Rank,Title,Year,Rating\n");
+        for (i, (movie, rating)) in summary.top_movies.iter().enumerate() {
+            let title = Self::escape_csv_field(&movie.title);
+            let year = movie.year.map(|y| y.to_string()).unwrap_or_default();
+            content.push_str(&format!("{},{},{},{:.1}\n", i + 1, title, year, rating));
+        }
+
+        if !summary.favorite_directors.is_empty() {
+            content.push_str("\nFavorite Directors\n");
+            content.push_str("Director,Film Count\n");
+            for (director, count) in &summary.favorite_directors {
+                content.push_str(&format!("{},{}\n", Self::escape_csv_field(director), count));
+            }
+        }
+
+        fs::write(output_path, content)?;
+        Ok(())
+    }
+
+    fn escape_csv_field(field: &str) -> String {
+        if field.contains(',') || field.contains('"') || field.contains('\n') {
+            format!("\"{}\"", field.replace('"', "\"\""))
+        } else {
+            field.to_string()
+        }
     }
 }

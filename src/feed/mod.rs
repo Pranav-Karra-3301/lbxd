@@ -19,7 +19,7 @@ impl FeedParser {
     pub fn new() -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
-            .user_agent("lbxd/1.2.1 (https://pranavkarra.me)")
+            .user_agent("lbxd/3.0.0 (https://github.com/Pranav-Karra-3301/lbxd)")
             .build()
             .unwrap_or_default();
 
@@ -32,7 +32,7 @@ impl FeedParser {
         let response = self
             .client
             .get(&rss_url)
-            .header("User-Agent", "lbxd/1.0.0")
+            .header("User-Agent", "lbxd/3.0.0")
             .send()
             .await?;
 

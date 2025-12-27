@@ -1,7 +1,9 @@
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::redundant_pattern_matching)]
 
+use chrono::Datelike;
 use clap::Parser;
+use colored::Colorize;
 use lbxd::{
     cache::CacheManager,
     cli::{Cli, ColorModeArg, Commands, ConfigCommands, DisplayModeArg},
@@ -236,9 +238,118 @@ async fn main() {
             }
         }
 
-        Commands::Compare { usernames: _ } => {
+        Commands::Compare { usernames } => {
             display.print_minimal_logo();
-            display.print_error("Compare feature is under development. Check back soon!");
+
+            if usernames.len() < 2 {
+                display.print_error("Please provide at least 2 usernames to compare");
+                return;
+            }
+
+            display
+                .print_loading_animation("Fetching user profiles...", 500)
+                .await;
+
+            println!();
+            println!(
+                "{}",
+                "═══════════════════════════════════════════════════════════".green()
+            );
+            println!(
+                "{}",
+                "                     📊 User Comparison                     ".bright_white()
+            );
+            println!(
+                "{}",
+                "═══════════════════════════════════════════════════════════".green()
+            );
+            println!();
+
+            let mut profiles_data: Vec<(String, usize, f32, usize)> = Vec::new();
+
+            for username in &usernames {
+                match feed_parser.fetch_user_feed(username).await {
+                    Ok(profile) => {
+                        let total_films = profile.entries.len();
+                        let rated_films: Vec<_> =
+                            profile.entries.iter().filter_map(|e| e.rating).collect();
+                        let avg_rating = if !rated_films.is_empty() {
+                            rated_films.iter().sum::<f32>() / rated_films.len() as f32
+                        } else {
+                            0.0
+                        };
+                        let reviews = profile
+                            .entries
+                            .iter()
+                            .filter(|e| e.review.is_some())
+                            .count();
+
+                        profiles_data.push((username.clone(), total_films, avg_rating, reviews));
+                    }
+                    Err(e) => {
+                        display.print_warning(&format!(
+                            "Could not fetch data for {}: {}",
+                            username, e
+                        ));
+                    }
+                }
+            }
+
+            if profiles_data.is_empty() {
+                display.print_error("Could not fetch any user data");
+                return;
+            }
+
+            // Print comparison table
+            println!(
+                "  {:<20} {:>12} {:>12} {:>12}",
+                "Username".bright_cyan(),
+                "Films".bright_cyan(),
+                "Avg Rating".bright_cyan(),
+                "Reviews".bright_cyan()
+            );
+            println!("  {}", "─".repeat(58));
+
+            for (username, films, avg_rating, reviews) in &profiles_data {
+                let rating_str = if *avg_rating > 0.0 {
+                    format!("{:.1}★", avg_rating)
+                } else {
+                    "N/A".to_string()
+                };
+                println!(
+                    "  {:<20} {:>12} {:>12} {:>12}",
+                    username.bright_white(),
+                    films.to_string().yellow(),
+                    rating_str.green(),
+                    reviews.to_string().blue()
+                );
+            }
+
+            println!();
+
+            // Find who has the most films
+            if let Some(max_films) = profiles_data.iter().max_by_key(|p| p.1) {
+                println!(
+                    "  🏆 {} has watched the most films ({})!",
+                    max_films.0.bright_yellow(),
+                    max_films.1
+                );
+            }
+
+            // Find highest average rating
+            let rated_users: Vec<_> = profiles_data.iter().filter(|p| p.2 > 0.0).collect();
+            if let Some(max_rating) = rated_users
+                .iter()
+                .max_by(|a, b| a.2.partial_cmp(&b.2).unwrap())
+            {
+                println!(
+                    "  ⭐ {} has the highest average rating ({:.1}★)!",
+                    max_rating.0.bright_yellow(),
+                    max_rating.2
+                );
+            }
+
+            println!();
         }
 
         Commands::Export {
@@ -263,12 +374,156 @@ async fn main() {
             }
         }
 
-        Commands::Summary {
-            username: _,
-            year: _,
-        } => {
+        Commands::Summary { username, year } => {
+            let actual_username = resolve_username(&username, &config_manager, &display).await;
+            if actual_username.is_none() {
+                return;
+            }
+            let actual_username = actual_username.unwrap();
+
             display.print_minimal_logo();
-            display.print_error("Summary feature is under development. Check back soon!");
+            display
+                .print_loading_animation("Generating summary...", 500)
+                .await;
+
+            let target_year = year.unwrap_or_else(|| chrono::Utc::now().year());
+
+            match feed_parser.fetch_user_feed(&actual_username).await {
+                Ok(profile) => {
+                    // Filter entries for the target year
+                    let year_entries: Vec<_> = profile
+                        .entries
+                        .iter()
+                        .filter(|e| {
+                            e.watched_date
+                                .map(|d| d.year() == target_year)
+                                .unwrap_or(false)
+                        })
+                        .collect();
+
+                    println!();
+                    println!(
+                        "{}",
+                        "═══════════════════════════════════════════════════════════".green()
+                    );
+                    println!(
+                        "  {} {} - {} Summary",
+                        "📊".bright_white(),
+                        actual_username.bright_green(),
+                        target_year.to_string().bright_yellow()
+                    );
+                    println!(
+                        "{}",
+                        "═══════════════════════════════════════════════════════════".green()
+                    );
+                    println!();
+
+                    if year_entries.is_empty() {
+                        println!("  {} No films found for {}", "ℹ".blue(), target_year);
+                        println!();
+                        return;
+                    }
+
+                    // Calculate stats
+                    let total_films = year_entries.len();
+                    let rated_films: Vec<_> =
+                        year_entries.iter().filter_map(|e| e.rating).collect();
+                    let avg_rating = if !rated_films.is_empty() {
+                        rated_films.iter().sum::<f32>() / rated_films.len() as f32
+                    } else {
+                        0.0
+                    };
+                    let reviews = year_entries.iter().filter(|e| e.review.is_some()).count();
+                    let liked = year_entries.iter().filter(|e| e.liked).count();
+
+                    // Stats section
+                    println!("  {} {}", "📈".bright_white(), "Statistics".bright_cyan());
+                    println!("  {}", "─".repeat(40));
+                    println!(
+                        "  🎬 Total Films Watched: {}",
+                        total_films.to_string().bright_yellow()
+                    );
+                    if avg_rating > 0.0 {
+                        let stars = "★".repeat(avg_rating as usize);
+                        let half = if avg_rating % 1.0 >= 0.5 { "½" } else { "" };
+                        println!(
+                            "  ⭐ Average Rating: {}{} ({:.1}/5)",
+                            stars.bright_yellow(),
+                            half.bright_yellow(),
+                            avg_rating
+                        );
+                    }
+                    println!(
+                        "  📝 Reviews Written: {}",
+                        reviews.to_string().bright_blue()
+                    );
+                    println!("  ❤️  Films Liked: {}", liked.to_string().bright_red());
+
+                    // Top rated films
+                    let mut top_rated: Vec<_> =
+                        year_entries.iter().filter(|e| e.rating.is_some()).collect();
+                    top_rated.sort_by(|a, b| b.rating.partial_cmp(&a.rating).unwrap());
+
+                    if !top_rated.is_empty() {
+                        println!();
+                        println!(
+                            "  {} {}",
+                            "🏆".bright_white(),
+                            "Top Rated Films".bright_cyan()
+                        );
+                        println!("  {}", "─".repeat(40));
+                        for (i, entry) in top_rated.iter().take(5).enumerate() {
+                            let year_str = entry
+                                .movie
+                                .year
+                                .map(|y| format!(" ({})", y))
+                                .unwrap_or_default();
+                            let stars = "★".repeat(entry.rating.unwrap() as usize);
+                            println!(
+                                "  {}. {}{} - {}",
+                                i + 1,
+                                entry.movie.title.bright_white(),
+                                year_str.dimmed(),
+                                stars.bright_yellow()
+                            );
+                        }
+                    }
+
+                    // Monthly breakdown
+                    println!();
+                    println!(
+                        "  {} {}",
+                        "📅".bright_white(),
+                        "Monthly Breakdown".bright_cyan()
+                    );
+                    println!("  {}", "─".repeat(40));
+
+                    let mut monthly_counts: std::collections::HashMap<u32, usize> =
+                        std::collections::HashMap::new();
+                    for entry in &year_entries {
+                        if let Some(date) = entry.watched_date {
+                            *monthly_counts.entry(date.month()).or_insert(0) += 1;
+                        }
+                    }
+
+                    let months = [
+                        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+                        "Nov", "Dec",
+                    ];
+                    for (i, month) in months.iter().enumerate() {
+                        let count = monthly_counts.get(&(i as u32 + 1)).unwrap_or(&0);
+                        let bar = "█".repeat(std::cmp::min(*count, 20));
+                        if *count > 0 {
+                            println!("  {} {:>3} {}", month, count, bar.bright_green());
+                        }
+                    }
+
+                    println!();
+                }
+                Err(e) => {
+                    display.print_error(&format!("Failed to fetch user data: {}", e));
+                }
+            }
         }
 
         Commands::Movie { title, width } => {
@@ -358,6 +613,28 @@ async fn main() {
                             display.print_error(&format!("Failed to update display mode: {}", e));
                         }
                     }
+                }
+                ConfigCommands::ClearCache => {
+                    if let Some(ref cache) = cache_manager {
+                        match cache.clear_cache() {
+                            Ok(_) => {
+                                display.print_success("Cache cleared successfully");
+                            }
+                            Err(e) => {
+                                display.print_error(&format!("Failed to clear cache: {}", e));
+                            }
+                        }
+                    } else {
+                        display.print_warning("Cache manager not available");
+                    }
+                }
+                ConfigCommands::Paths => {
+                    let home_dir = dirs::home_dir()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|| "~".to_string());
+                    display.print_info("File Locations:");
+                    println!("  Config: {}/.config/lbxd/config.json", home_dir);
+                    println!("  Cache:  {}/.cache/lbxd/", home_dir);
                 }
             }
         }

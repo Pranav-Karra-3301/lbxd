@@ -99,8 +99,8 @@ lbxd --version
 git clone https://github.com/Pranav-Karra-3301/lbxd.git
 cd lbxd
 
-# Install dependencies
-pip3 install letterboxdpy
+# Install viu (required for poster display)
+cargo install viu
 
 # Run in development mode
 cargo run -- --help
@@ -116,10 +116,15 @@ cargo build --release
 
 Download prebuilt binaries from the [releases page](https://github.com/Pranav-Karra-3301/lbxd/releases):
 
-- **Linux**: `lbxd-linux-x86_64.tar.gz`
-- **macOS Intel**: `lbxd-macos-x86_64.tar.gz`
-- **macOS Apple Silicon**: `lbxd-macos-aarch64.tar.gz`
-- **Windows**: `lbxd-windows-x86_64.exe.zip`
+| Platform | Architecture | File |
+|----------|--------------|------|
+| Linux | x86_64 | `lbxd-linux-x86_64.tar.gz` |
+| Linux | ARM64 | `lbxd-linux-aarch64.tar.gz` |
+| macOS | Intel | `lbxd-macos-x86_64.tar.gz` |
+| macOS | Apple Silicon | `lbxd-macos-aarch64.tar.gz` |
+| Windows | x86_64 | `lbxd-windows-x86_64.exe.zip` |
+
+Each release includes `SHA256SUMS.txt` for verifying downloads.
 
 ### System Dependencies
 
