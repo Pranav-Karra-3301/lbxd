@@ -8,10 +8,59 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  MSRV: "1.75.0"
 
 jobs:
+  # Quick checks that fail fast
+  fmt:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt -- --check
+
+  # MSRV check to ensure we maintain compatibility claims
+  msrv:
+    name: MSRV Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --all-features
+
+  # Documentation build check
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build documentation
+        run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  # Security audit
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # Main test suite
   test:
-    name: Test
+    name: Test (${{ matrix.os }} / ${{ matrix.rust }})
+    needs: [fmt]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -22,54 +71,28 @@ jobs:
           # Temporarily exclude macOS beta due to macOS 15 migration issues
           - os: macos-14
             rust: beta
-        
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.rust }}
-        components: rustfmt, clippy
+        components: clippy
 
-    # No submodules needed - rustboxd is now from crates.io
-
-    # Run cargo fmt check BEFORE restoring caches so formatting errors surface fast
-    - name: Check formatting
-      run: cargo fmt -- --check
-
-    # No system dependencies needed for pure Rust build
-
-    # No system dependencies needed for pure Rust build on macOS
-
-    # No Python dependencies needed - using pure Rust with rustboxd
-        
-    - name: Cache cargo registry
-      uses: actions/cache@v4
+    - name: Setup Rust cache
+      uses: Swatinem/rust-cache@v2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-        
-    - name: Cache cargo index
-      uses: actions/cache@v4
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-        
-    # Make cargo build cache key include runner.os, matrix.os, and matrix.rust
-    - name: Cache cargo build
-      uses: actions/cache@v4
-      with:
-        path: target
-        key: ${{ runner.os }}-${{ matrix.os }}-${{ matrix.rust }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-        
+        key: ${{ matrix.os }}-${{ matrix.rust }}
+
     - name: Run tests
       run: cargo test --verbose
-      
+
     # Enforce clippy warnings on stable with -D warnings, allow beta to continue on error
     - name: Run clippy
       run: cargo clippy --all-targets -- -D warnings
       continue-on-error: ${{ matrix.rust != 'stable' }}
 
-    - name: Test build
+    - name: Build release
       run: cargo build --release
