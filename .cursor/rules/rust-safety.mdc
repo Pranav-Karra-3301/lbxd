@@ -1,0 +1,84 @@
+---
+description: Rust safety and best practices for lbxd development
+alwaysApply: true
+---
+
+# Rust Safety Rules
+
+## Error Handling
+
+Always use proper error handling:
+
+```rust
+// GOOD: Propagate errors
+pub async fn fetch_data(id: &str) -> anyhow::Result<Data> {
+    let response = client.get(&url).send().await?;
+    let data: Data = response.json().await?;
+    Ok(data)
+}
+
+// BAD: Panic on errors
+pub async fn fetch_data(id: &str) -> Data {
+    client.get(&url).send().await.unwrap()  // NEVER!
+}
+```
+
+## Forbidden Patterns
+
+NEVER use these in production code:
+
+1. **`.unwrap()` or `.expect()`** without justification
+2. **`unsafe` blocks** without documented necessity
+3. **Hardcoded API keys or secrets**
+4. **Blocking I/O in async functions**
+5. **Unbounded recursion or loops**
+6. **Ignoring Result with `let _ =`**
+
+## Required Patterns
+
+ALWAYS implement:
+
+1. **Timeout on network requests**
+```rust
+client.get(&url)
+    .timeout(Duration::from_secs(30))
+    .send()
+    .await?;
+```
+
+2. **Input validation**
+```rust
+if username.is_empty() {
+    anyhow::bail!("Username cannot be empty");
+}
+```
+
+3. **Graceful degradation**
+```rust
+match fetch_poster(&movie.id).await {
+    Ok(poster) => display_poster(poster),
+    Err(_) => display_placeholder(),
+}
+```
+
+## Async Best Practices
+
+```rust
+// Use tokio::join! for concurrent operations
+let (user, movies) = tokio::join!(
+    fetch_user(username),
+    fetch_movies(username)
+);
+
+// Use tokio::spawn for background tasks
+tokio::spawn(async move {
+    cache.cleanup().await;
+});
+```
+
+## Memory Safety
+
+- Avoid large stack allocations
+- Use `Box<T>` for large types
+- Prefer references over cloning
+- Clean up resources in Drop implementations

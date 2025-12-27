@@ -1,0 +1,122 @@
+---
+description: Git workflow, commit conventions, and release process
+alwaysApply: false
+---
+
+# Git & Release Guidelines
+
+## Branch Strategy
+
+- `main` - Stable releases only
+- `feature/name` - New features
+- `fix/name` - Bug fixes
+- `refactor/name` - Code improvements
+- `docs/name` - Documentation
+
+## Commit Messages
+
+Use **Conventional Commits**:
+
+```
+<type>: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+### Types
+
+| Type | When to Use |
+|------|-------------|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `refactor` | Code restructuring |
+| `docs` | Documentation only |
+| `test` | Adding/fixing tests |
+| `chore` | Maintenance tasks |
+| `perf` | Performance improvement |
+| `style` | Formatting only |
+
+### Examples
+
+```
+feat: add watchlist export command
+
+fix: handle empty user profiles gracefully
+
+refactor: extract cache logic to dedicated module
+
+docs: update installation instructions for Windows
+
+test: add integration tests for TMDB client
+
+chore: update tokio to 1.35
+```
+
+## Pre-Commit Checklist
+
+Before committing:
+
+```bash
+cargo fmt                     # Format code
+cargo clippy -- -D warnings   # Lint (strict)
+cargo test                    # Run tests
+```
+
+## Release Process
+
+### Version Bump
+
+1. Update `Cargo.toml` version
+2. Update `CHANGELOG.md`
+3. Commit: `git commit -m "chore: bump version to X.Y.Z"`
+
+### Tagging
+
+```bash
+git tag vX.Y.Z
+git push origin main
+git push origin vX.Y.Z
+```
+
+### CI/CD Automation
+
+The `release.yml` workflow automatically:
+- Builds for all platforms
+- Creates GitHub release
+- Uploads binaries
+
+## Versioning
+
+Follow **Semantic Versioning**:
+
+- **MAJOR** (X.0.0): Breaking changes
+- **MINOR** (0.X.0): New features, backward compatible
+- **PATCH** (0.0.X): Bug fixes, backward compatible
+
+## CHANGELOG Format
+
+```markdown
+## [X.Y.Z] - YYYY-MM-DD
+
+### Added
+- New feature description
+
+### Changed
+- Modified behavior description
+
+### Fixed
+- Bug fix description
+
+### Removed
+- Deprecated feature removed
+```
+
+## Pull Request Guidelines
+
+1. Clear title with type prefix
+2. Description of changes
+3. Test coverage for new code
+4. No failing CI checks
+5. Request review from maintainer
