@@ -1,0 +1,94 @@
+---
+description: Rules for Terminal UI development with ratatui
+globs: ["src/tui/**/*.rs"]
+---
+
+# TUI Development Guidelines
+
+## Framework
+
+The TUI uses **ratatui** with **crossterm** as the backend.
+
+## Architecture
+
+```
+tui/
+├── mod.rs       # Main event loop, rendering
+├── app.rs       # Application state
+├── grid.rs      # Grid layout for collections
+├── styles.rs    # Colors and styling
+└── progress.rs  # Progress indicators
+```
+
+## Event Loop Pattern
+
+```rust
+pub async fn run_tui(username: &str) -> anyhow::Result<()> {
+    let mut terminal = setup_terminal()?;
+    let mut app = App::new(username);
+
+    loop {
+        terminal.draw(|frame| {
+            app.render(frame);
+        })?;
+
+        if let Event::Key(key) = event::read()? {
+            match key.code {
+                KeyCode::Char('q') => break,
+                KeyCode::Up => app.move_up(),
+                KeyCode::Down => app.move_down(),
+                _ => {}
+            }
+        }
+    }
+
+    restore_terminal(terminal)?;
+    Ok(())
+}
+```
+
+## State Management
+
+Keep state in `App` struct:
+
+```rust
+pub struct App {
+    pub movies: Vec<Movie>,
+    pub selected_index: usize,
+    pub scroll_offset: usize,
+    pub loading: bool,
+}
+```
+
+## Rendering Rules
+
+1. **Always restore terminal** on exit (normal or error)
+2. **Handle terminal resize** events
+3. **Use styled text** from `styles.rs`
+4. **Keep rendering pure** - no side effects
+5. **Test with small terminals** (80x24 minimum)
+
+## Key Bindings
+
+Standard bindings:
+- `q` / `Esc` - Quit
+- Arrow keys - Navigation
+- `Enter` - Select
+- `?` - Help
+- `/` - Search
+
+## Colors
+
+Use the color palette from `styles.rs`:
+```rust
+use crate::tui::styles::{HIGHLIGHT, PRIMARY, SECONDARY};
+```
+
+## Error Display
+
+Show errors inline without crashing:
+```rust
+if let Err(e) = load_data().await {
+    app.set_error(format!("Failed to load: {}", e));
+}
+```

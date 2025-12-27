@@ -1,0 +1,67 @@
+---
+description: Core project context and guidelines for lbxd - the Letterboxd CLI tool
+alwaysApply: true
+---
+
+# lbxd Project Context
+
+## Project Identity
+
+**lbxd** is a pure Rust command-line tool that brings Letterboxd to the terminal. It provides:
+- Interactive TUI for browsing movie collections
+- Recent activity viewing with ratings and reviews
+- Movie search via TMDB integration
+- Data export to JSON/Markdown
+- Intelligent caching for offline access
+
+## Tech Stack
+
+- **Language**: Rust 1.88+ (Edition 2021)
+- **CLI**: clap 4.5 with derive macros
+- **Async**: tokio runtime
+- **HTTP**: reqwest
+- **TUI**: ratatui + crossterm
+- **Serialization**: serde + serde_json
+- **Errors**: anyhow
+
+## Project Structure
+
+```
+src/
+├── main.rs          # Entry point
+├── lib.rs           # Library root
+├── cli/             # Command definitions
+├── tui/             # Terminal UI
+├── display/         # Output formatting
+├── letterboxd_client_rust/  # Letterboxd API
+├── tmdb/            # TMDB client
+├── omdb/            # OMDB client
+├── models/          # Data structures
+├── cache/           # Caching system
+├── config/          # Configuration
+└── export/          # Data export
+```
+
+## Core Principles
+
+1. **Pure Rust** - No Python or shell scripts
+2. **Zero Config** - Works out of box with built-in API keys
+3. **Safety First** - Proper error handling everywhere
+4. **Terminal Native** - Designed for CLI experience
+
+## Code Style
+
+- Use `anyhow::Result<T>` for errors
+- Use `async/await` for all I/O
+- Prefer `?` over `unwrap()`
+- Module per file/directory
+- Doc comments for public API
+
+## Build Commands
+
+```bash
+cargo build --release    # Build
+cargo test               # Test
+cargo clippy             # Lint
+cargo fmt                # Format
+```
