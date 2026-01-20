@@ -1,25 +1,32 @@
 PackageIdentifier: Pranav-Karra-3301.lbxd
-PackageVersion: 2.2.3
+PackageVersion: 3.0.0
 PackageName: lbxd
 Publisher: Pranav Karra
 License: MIT
 LicenseUrl: https://github.com/Pranav-Karra-3301/lbxd/blob/main/LICENSE
-ShortDescription: Beautiful command-line tool for Letterboxd with interactive TUI
+ShortDescription: Beautiful command-line tool for Letterboxd - pure Rust, no Python required
 Description: |-
-  lbxd is a powerful command-line tool written in Rust that brings Letterboxd to your terminal.
-  
+  lbxd v3.0.0 is a powerful command-line tool written in pure Rust that brings Letterboxd to your terminal.
+
+  What's New in v3.0.0:
+  - Pure Rust implementation - NO Python dependencies!
+  - Faster performance with native rustboxd library
+  - Simplified installation
+
   Features:
   - Interactive TUI for browsing complete movie collections
   - View recent activity, ratings, and reviews for any user
-  - Search functionality for titles in user activity  
+  - Search functionality for titles in user activity
   - Movie database integration with TMDB
   - Export data to JSON or Markdown formats
-  - Beautiful terminal display with ASCII art and posters
+  - Beautiful terminal display with poster images
   - Configurable settings and user preferences
   - Intelligent caching for offline access
   - Cross-platform support
-  
-  No API keys required - works out of the box!
+
+  For movie search and poster display, get free API keys from:
+  - TMDB: https://www.themoviedb.org/settings/api
+  - OMDB: https://www.omdbapi.com/apikey.aspx
 Moniker: lbxd
 Tags:
 - letterboxd
@@ -27,16 +34,22 @@ Tags:
 - movies
 - terminal
 - rust
-- ascii
 - film
 - review
 - tui
 PackageUrl: https://github.com/Pranav-Karra-3301/lbxd
 Author: Pranav Karra
+ReleaseNotesUrl: https://github.com/Pranav-Karra-3301/lbxd/releases/tag/v3.0.0
+# IMPORTANT: SHA256 placeholders must be replaced with actual hashes before submitting to WinGet.
+# Calculate with: Get-FileHash -Algorithm SHA256 <archive>.zip
 Installers:
 - Architecture: x64
   InstallerType: zip
-  InstallerUrl: https://github.com/Pranav-Karra-3301/lbxd/releases/download/v2.1.1/lbxd-windows-x86_64.exe.zip
-  InstallerSha256: SHA256_PLACEHOLDER
+  InstallerUrl: https://github.com/Pranav-Karra-3301/lbxd/releases/download/v3.0.0/lbxd-windows-x86_64.exe.zip
+  InstallerSha256: SHA256_PLACEHOLDER_X64  # TODO: Replace with actual hash
+- Architecture: arm64
+  InstallerType: zip
+  InstallerUrl: https://github.com/Pranav-Karra-3301/lbxd/releases/download/v3.0.0/lbxd-windows-aarch64.exe.zip
+  InstallerSha256: SHA256_PLACEHOLDER_ARM64  # TODO: Replace with actual hash
 ManifestType: singleton
-ManifestVersion: 1.4.0
+ManifestVersion: 1.6.0

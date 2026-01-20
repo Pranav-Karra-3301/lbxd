@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -15,19 +15,28 @@ pub mod app;
 pub mod grid;
 pub mod progress;
 pub mod styles;
+pub mod terminal;
 
 pub use app::*;
 pub use grid::*;
 pub use progress::*;
 pub use styles::*;
+pub use terminal::*;
 
 use crate::profile::{ComprehensiveProfile, LoadingProgress};
 
 pub async fn run_tui(username: &str) -> Result<()> {
+    // Check terminal size before entering TUI mode
+    let caps = TerminalCapabilities::detect();
+    if !caps.is_size_sufficient() {
+        eprintln!("{}", caps.get_size_error_message());
+        return Ok(());
+    }
+
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
@@ -57,11 +66,7 @@ pub async fn run_tui(username: &str) -> Result<()> {
 
     // Restore terminal
     disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
 
     res

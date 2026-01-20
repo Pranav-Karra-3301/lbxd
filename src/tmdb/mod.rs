@@ -4,8 +4,8 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use std::env;
 
-// Default API key - users can override with TMDB_API_KEY environment variable
-const DEFAULT_TMDB_API_KEY: &str = "bce5788c33b687c14b610654579ff6aa";
+use crate::config::ConfigManager;
+
 const TMDB_BASE_URL: &str = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE_URL: &str = "https://image.tmdb.org/t/p/w780"; // Higher quality images
 const TMDB_IMAGE_ORIGINAL: &str = "https://image.tmdb.org/t/p/original";
@@ -45,9 +45,34 @@ impl TMDBClient {
         Self { client }
     }
 
-    /// Get TMDB API key from environment variable or use default
-    fn get_api_key() -> String {
-        env::var("TMDB_API_KEY").unwrap_or_else(|_| DEFAULT_TMDB_API_KEY.to_string())
+    /// Get TMDB API key from environment variable or config file.
+    /// Returns an error with helpful instructions if no key is configured.
+    fn get_api_key() -> Result<String> {
+        // Priority 1: Environment variable
+        if let Ok(key) = env::var("TMDB_API_KEY") {
+            if !key.is_empty() {
+                return Ok(key);
+            }
+        }
+
+        // Priority 2: Config file
+        if let Ok(config_manager) = ConfigManager::new() {
+            if let Some(key) = config_manager.get_tmdb_api_key() {
+                return Ok(key);
+            }
+        }
+
+        // No key found - provide helpful error message
+        Err(anyhow::anyhow!(
+            "TMDB API key not configured.\n\
+            \n\
+            To enable movie search and poster display, you need a free TMDB API key:\n\
+            1. Sign up at https://www.themoviedb.org/signup\n\
+            2. Go to Settings -> API and request an API key\n\
+            3. Set it via environment variable: export TMDB_API_KEY=your_key_here\n\
+            \n\
+            Note: lbxd will work without this key, but movie search will be unavailable."
+        ))
     }
 
     pub async fn search_movie(&self, query: &str) -> Result<Option<TMDBMovie>> {
@@ -59,7 +84,7 @@ impl TMDBClient {
         query: &str,
         year: Option<i32>,
     ) -> Result<Option<TMDBMovie>> {
-        let api_key = Self::get_api_key();
+        let api_key = Self::get_api_key()?;
         let mut url = format!(
             "{}/search/movie?api_key={}&query={}",
             TMDB_BASE_URL,

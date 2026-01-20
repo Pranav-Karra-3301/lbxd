@@ -1,72 +1,79 @@
 # Homebrew Formula for lbxd
-# 
+#
 # This formula is maintained in a separate repository:
 # https://github.com/Pranav-Karra-3301/homebrew-lbxd
-# 
+#
 # This file serves as a template for the tap repository.
 # To install via Homebrew:
 #   brew tap pranav-karra-3301/lbxd
 #   brew install lbxd
 #
-# This formula builds lbxd from source with all dependencies
+# v3.0.0 - Pure Rust implementation, NO Python dependencies!
+#
+# IMPORTANT: SHA256 hashes below are placeholders. Before releasing:
+#   1. Build release artifacts with `cargo build --release`
+#   2. Create the tar.gz archives for each platform
+#   3. Calculate SHA256: `shasum -a 256 <archive>.tar.gz`
+#   4. Replace SHA256_PLACEHOLDER_* values with actual hashes
 class Lbxd < Formula
   desc "Beautiful command-line tool for Letterboxd - view activity, browse collections, and explore movies"
   homepage "https://github.com/Pranav-Karra-3301/lbxd"
-  url "https://github.com/Pranav-Karra-3301/lbxd/archive/refs/tags/v2.2.3.tar.gz"
-  sha256 "89401c383796dca50501dbc284fe699b69edeaea2e3e537b8dec055c885f7c53"
+  version "3.0.0"
   license "MIT"
 
-  depends_on "rust" => :build
-  depends_on "python@3.12"
-  depends_on "curl"
-
-  def install
-    # Install Python dependencies
-    system Formula["python@3.12"].opt_bin/"pip3", "install", "letterboxdpy"
-
-    # Build Rust project
-    system "cargo", "install", *std_cargo_args
-
-    # Ensure binary is installed correctly
-    bin.install "target/release/lbxd" if File.exist?("target/release/lbxd")
+  on_macos do
+    on_intel do
+      url "https://github.com/Pranav-Karra-3301/lbxd/releases/download/v3.0.0/lbxd-macos-x86_64.tar.gz"
+      sha256 "SHA256_PLACEHOLDER_MACOS_X86"
+    end
+    on_arm do
+      url "https://github.com/Pranav-Karra-3301/lbxd/releases/download/v3.0.0/lbxd-macos-aarch64.tar.gz"
+      sha256 "SHA256_PLACEHOLDER_MACOS_ARM"
+    end
   end
 
-  def post_install
-    # Verify Python dependencies are available
-    python_cmd = Formula["python@3.12"].opt_bin/"python3"
-    system python_cmd, "-c", "import letterboxdpy"
+  on_linux do
+    on_intel do
+      url "https://github.com/Pranav-Karra-3301/lbxd/releases/download/v3.0.0/lbxd-linux-x86_64.tar.gz"
+      sha256 "SHA256_PLACEHOLDER_LINUX_X86"
+    end
+    on_arm do
+      url "https://github.com/Pranav-Karra-3301/lbxd/releases/download/v3.0.0/lbxd-linux-aarch64.tar.gz"
+      sha256 "SHA256_PLACEHOLDER_LINUX_ARM"
+    end
+  end
+
+  # Optional: viu for terminal image display
+  depends_on "viu" => :recommended
+
+  def install
+    bin.install "lbxd"
   end
 
   test do
-    # Test that the binary runs and shows version
     output = shell_output("#{bin}/lbxd --version")
-    assert_match "lbxd 2.2.2", output
-
-    # Test that Python dependencies are accessible
-    python_cmd = Formula["python@3.12"].opt_bin/"python3"
-    system python_cmd, "-c", "import letterboxdpy"
+    assert_match "lbxd 3.0.0", output
   end
 
   def caveats
     <<~EOS
-      lbxd requires Python 3 with the letterboxdpy package.
-      
-      Dependencies installed:
-      - Python 3.12
-      - letterboxdpy (Python package)
-      - curl (for network requests)
-      
+      lbxd v3.0.0 - Pure Rust implementation!
+
+      What's new:
+      - NO Python dependencies required
+      - Faster performance with native Rust
+      - Simplified installation
+
+      For terminal image display, install viu:
+        brew install viu
+
       Usage:
-        # Show version and help
-        lbxd
-        
-        # Browse a user's collection interactively
-        lbxd browse username
-        
-        # Show recent activity
-        lbxd recent username
-      
-      For more information, visit: https://github.com/Pranav-Karra-3301/lbxd
+        lbxd browse username    # Interactive TUI mode
+        lbxd recent username    # View recent activity
+        lbxd movie "Inception"  # Search for movies
+        lbxd --help             # See all commands
+
+      For more information: https://github.com/Pranav-Karra-3301/lbxd
     EOS
   end
 end
