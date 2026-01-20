@@ -28,7 +28,7 @@ urlencoding = "2.1"
 ratatui = "0.24"
 crossterm = "0.28"
 rustboxd = "0.2.0"
-scraper = "0.21"
+scraper = "0.25"
 async-trait = "0.1"
 
 [dev-dependencies]
