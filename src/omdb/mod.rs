@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::time::Duration;
 
-// Default API key - users can override with OMDB_API_KEY environment variable
-const DEFAULT_OMDB_API_KEY: &str = "ad032cc2";
-const OMDB_BASE_URL: &str = "http://www.omdbapi.com/";
+use crate::config::ConfigManager;
+
+const OMDB_BASE_URL: &str = "https://www.omdbapi.com/";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OMDBMovie {
@@ -104,9 +104,34 @@ impl OMDBClient {
         Self { client }
     }
 
-    /// Get OMDB API key from environment variable or use default
-    fn get_api_key() -> String {
-        env::var("OMDB_API_KEY").unwrap_or_else(|_| DEFAULT_OMDB_API_KEY.to_string())
+    /// Get OMDB API key from environment variable or config file.
+    /// Returns an error with helpful instructions if no key is configured.
+    fn get_api_key() -> Result<String> {
+        // Priority 1: Environment variable
+        if let Ok(key) = env::var("OMDB_API_KEY") {
+            if !key.is_empty() {
+                return Ok(key);
+            }
+        }
+
+        // Priority 2: Config file
+        if let Ok(config_manager) = ConfigManager::new() {
+            if let Some(key) = config_manager.get_omdb_api_key() {
+                return Ok(key);
+            }
+        }
+
+        // No key found - provide helpful error message
+        Err(anyhow::anyhow!(
+            "OMDB API key not configured.\n\
+            \n\
+            To enable IMDb ratings lookup, you need a free OMDB API key:\n\
+            1. Go to https://www.omdbapi.com/apikey.aspx\n\
+            2. Request a free API key (1,000 daily limit)\n\
+            3. Set it via environment variable: export OMDB_API_KEY=your_key_here\n\
+            \n\
+            Note: lbxd will work without this key, but IMDb/RT ratings will be unavailable."
+        ))
     }
 
     pub async fn get_movie_by_title(
@@ -114,7 +139,7 @@ impl OMDBClient {
         title: &str,
         year: Option<u16>,
     ) -> Result<Option<OMDBMovie>> {
-        let api_key = Self::get_api_key();
+        let api_key = Self::get_api_key()?;
         let mut url = format!(
             "{}?apikey={}&t={}",
             OMDB_BASE_URL,
@@ -141,7 +166,7 @@ impl OMDBClient {
         query: &str,
         year: Option<u16>,
     ) -> Result<Vec<OMDBSearchMovie>> {
-        let api_key = Self::get_api_key();
+        let api_key = Self::get_api_key()?;
         let mut url = format!(
             "{}?apikey={}&s={}",
             OMDB_BASE_URL,
@@ -164,7 +189,7 @@ impl OMDBClient {
     }
 
     pub async fn get_movie_by_imdb_id(&self, imdb_id: &str) -> Result<Option<OMDBMovie>> {
-        let api_key = Self::get_api_key();
+        let api_key = Self::get_api_key()?;
         let url = format!("{}?apikey={}&i={}", OMDB_BASE_URL, api_key, imdb_id);
 
         let response = self.client.get(&url).send().await?;

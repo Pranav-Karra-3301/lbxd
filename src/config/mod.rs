@@ -20,6 +20,12 @@ pub struct Config {
     pub username: Option<String>,
     pub color_mode: ColorMode,
     pub display_mode: DisplayMode,
+    /// Optional TMDB API key (users can get free keys at https://www.themoviedb.org/settings/api)
+    #[serde(default)]
+    pub tmdb_api_key: Option<String>,
+    /// Optional OMDB API key (users can get free keys at https://www.omdbapi.com/apikey.aspx)
+    #[serde(default)]
+    pub omdb_api_key: Option<String>,
 }
 
 impl Default for Config {
@@ -28,6 +34,8 @@ impl Default for Config {
             username: None,
             color_mode: ColorMode::Color,
             display_mode: DisplayMode::Pixelated,
+            tmdb_api_key: None,
+            omdb_api_key: None,
         }
     }
 }
@@ -111,6 +119,30 @@ impl ConfigManager {
 
     pub fn get_all_config(&self) -> Result<Config> {
         self.load_config()
+    }
+
+    /// Get TMDB API key from config (if set)
+    pub fn get_tmdb_api_key(&self) -> Option<String> {
+        self.load_config().ok()?.tmdb_api_key
+    }
+
+    /// Set TMDB API key in config
+    pub fn set_tmdb_api_key(&self, api_key: String) -> Result<()> {
+        let mut config = self.load_config()?;
+        config.tmdb_api_key = Some(api_key);
+        self.save_config(&config)
+    }
+
+    /// Get OMDB API key from config (if set)
+    pub fn get_omdb_api_key(&self) -> Option<String> {
+        self.load_config().ok()?.omdb_api_key
+    }
+
+    /// Set OMDB API key in config
+    pub fn set_omdb_api_key(&self, api_key: String) -> Result<()> {
+        let mut config = self.load_config()?;
+        config.omdb_api_key = Some(api_key);
+        self.save_config(&config)
     }
 
     fn get_config_dir() -> Result<PathBuf> {

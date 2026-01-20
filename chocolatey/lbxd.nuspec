@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>lbxd</id>
-    <version>2.2.3</version>
+    <version>3.0.0</version>
     <packageSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</packageSourceUrl>
     <owners>Pranav-Karra-3301</owners>
     <title>lbxd - Letterboxd CLI</title>
@@ -15,21 +15,26 @@
     <projectSourceUrl>https://github.com/Pranav-Karra-3301/lbxd</projectSourceUrl>
     <docsUrl>https://github.com/Pranav-Karra-3301/lbxd/tree/main/docs</docsUrl>
     <bugTrackerUrl>https://github.com/Pranav-Karra-3301/lbxd/issues</bugTrackerUrl>
-    <tags>letterboxd cli movies terminal rust ascii film review</tags>
-    <summary>Beautiful command-line tool for Letterboxd with interactive TUI and rich terminal display</summary>
+    <tags>letterboxd cli movies terminal rust film review tui</tags>
+    <summary>Beautiful command-line tool for Letterboxd - pure Rust, no Python required</summary>
     <description>
-lbxd is a powerful command-line tool written in Rust that brings Letterboxd to your terminal. View any user's movie activity, ratings, and reviews in beautiful ASCII art and stylized text.
+lbxd v3.0.0 is a powerful command-line tool written in pure Rust that brings Letterboxd to your terminal.
+
+## What's New in v3.0.0
+- Pure Rust implementation - NO Python dependencies!
+- Faster performance with native rustboxd library
+- Simplified installation
 
 ## Features
-- 🎭 Interactive TUI for browsing complete movie collections
-- 📽️ View recent activity, ratings, and reviews for any user
-- 🔍 Search functionality for titles in user activity
-- 🎬 Movie database integration with TMDB
-- 📤 Export data to JSON or Markdown formats
-- 🎨 Beautiful terminal display with ASCII art and posters
-- ⚙️ Configurable settings and user preferences  
-- 💾 Intelligent caching for offline access
-- 🌍 Cross-platform support (Windows, macOS, Linux)
+- Interactive TUI for browsing complete movie collections
+- View recent activity, ratings, and reviews for any user
+- Search functionality for titles in user activity
+- Movie database integration with TMDB
+- Export data to JSON or Markdown formats
+- Beautiful terminal display with poster images
+- Configurable settings and user preferences
+- Intelligent caching for offline access
+- Cross-platform support (Windows, macOS, Linux)
 
 ## Quick Start
 After installation, try:
@@ -39,15 +44,14 @@ After installation, try:
 - `lbxd --help` - See all commands
 
 ## Requirements
-- Python 3.x (auto-installed if missing)
-- Optional: viu for enhanced image display
+- viu (optional, for terminal image display): `cargo install viu`
 
-No API keys required - works out of the box!
+## API Keys
+For movie search and poster display, get free API keys:
+- TMDB: https://www.themoviedb.org/settings/api
+- OMDB: https://www.omdbapi.com/apikey.aspx
     </description>
-    <releaseNotes>https://github.com/Pranav-Karra-3301/lbxd/releases</releaseNotes>
-    <dependencies>
-      <dependency id="python3" version="3.8.0" />
-    </dependencies>
+    <releaseNotes>https://github.com/Pranav-Karra-3301/lbxd/releases/tag/v3.0.0</releaseNotes>
   </metadata>
   <files>
     <file src="tools\**" target="tools" />

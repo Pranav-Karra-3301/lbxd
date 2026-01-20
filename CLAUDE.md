@@ -18,7 +18,7 @@
 
 2. **Terminal-First Experience**: Every feature is designed for the terminal. Rich TUI interfaces, ASCII art, colorful output, and inline poster display create a delightful experience.
 
-3. **Works Out of the Box**: No API key configuration required. Built-in defaults for TMDB and OMDB APIs mean users can install and immediately use the tool.
+3. **User-Provided API Keys**: Users must configure their own free API keys for TMDB and OMDB. This ensures proper API usage tracking and avoids rate limit issues from shared keys. Keys can be set via environment variables or config file.
 
 4. **Safety Over Speed**: Code correctness and user data safety take precedence over raw performance. Every async operation handles errors gracefully.
 
@@ -70,8 +70,8 @@ src/
 ### External Dependencies
 
 - **viu**: Required for terminal image display (posters)
-- **TMDB API**: Movie search and metadata (built-in key)
-- **OMDB API**: IMDb ratings (built-in key)
+- **TMDB API**: Movie search and metadata (free key required: https://www.themoviedb.org/settings/api)
+- **OMDB API**: IMDb ratings (free key required: https://www.omdbapi.com/apikey.aspx)
 
 ## Development Commands
 
