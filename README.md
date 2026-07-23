@@ -6,8 +6,11 @@
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release](https://img.shields.io/github/v/release/Pranav-Karra-3301/lbxd)](https://github.com/Pranav-Karra-3301/lbxd/releases)
+[![Crates.io](https://img.shields.io/crates/v/lbxd.svg)](https://crates.io/crates/lbxd)
 
 **lbxd** is a beautiful command-line tool written in Rust that brings Letterboxd to your terminal. View any user's activity, browse collections interactively, and explore movie data with rich terminal displays.
+
+[Website](https://lbxd.pranavkarra.me) · [crates.io](https://crates.io/crates/lbxd) · [Docs](https://docs.rs/lbxd) · [Installation](INSTALLATION.md)
 
 ```
     ██╗     ██████╗ ██╗  ██╗██████╗ 
@@ -47,6 +50,11 @@ irm https://raw.githubusercontent.com/Pranav-Karra-3301/lbxd/main/install.ps1 | 
 > 📖 **For detailed installation instructions across all platforms and package managers, see [INSTALLATION.md](INSTALLATION.md)**
 
 ### Package Managers
+
+**Cargo (crates.io):**
+```bash
+cargo install lbxd
+```
 
 **Homebrew (macOS/Linux):**
 ```bash
@@ -353,3 +361,7 @@ If you encounter any issues or have questions:
 
 - 🐛 [Report bugs](https://github.com/Pranav-Karra-3301/lbxd/issues)
 - 💡 [Request features](https://github.com/Pranav-Karra-3301/lbxd/issues)
+
+---
+
+Built by [Pranav Karra](https://pranavkarra.me)
