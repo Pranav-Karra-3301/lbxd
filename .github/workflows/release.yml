@@ -38,7 +38,7 @@ jobs:
             asset_name: lbxd-macos-aarch64.tar.gz
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
